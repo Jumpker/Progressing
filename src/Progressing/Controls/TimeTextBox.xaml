@@ -1,0 +1,9 @@
+<UserControl x:Class="Progressing.Controls.TimeTextBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <TextBox x:Name="InputBox"
+             Width="52"
+             TextAlignment="Center"
+             VerticalContentAlignment="Center"
+             ToolTip="格式 hh:mm，如 11:00" />
+</UserControl>

@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- 统一编译配置（所有子项目共享） -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>
