@@ -30,10 +30,6 @@ public partial class InstanceViewModel : TabViewModel
         _manager = manager;
         Window.EditModeChanged += (_, _) => OnPropertyChanged(nameof(IsEditMode));
 
-        Monitors.Add(new MonitorItem(null, "主显示器"));
-        foreach (var m in Win32WindowHelper.EnumerateMonitors())
-            Monitors.Add(new MonitorItem(m.DeviceName, $"{m.DeviceName} ({m.WorkArea.Width / m.DpiScale:0}×{m.WorkArea.Height / m.DpiScale:0})"));
-
         RefreshNotes();
     }
 
@@ -107,9 +103,6 @@ public partial class InstanceViewModel : TabViewModel
         set { Config.Border.Color = value; OnPropertyChanged(); Save(); }
     }
 
-    /// <summary>显示器下拉项。</summary>
-    public ObservableCollection<MonitorItem> Monitors { get; } = new();
-
     /// <summary>进度条定位预设下拉项（选中即应用并复位）。</summary>
     public IReadOnlyList<PlacementPresetItem> Presets { get; } = new[]
     {
@@ -127,10 +120,6 @@ public partial class InstanceViewModel : TabViewModel
         new LabeledValue<TextAnchor>("进度条左侧", TextAnchor.Left),
         new LabeledValue<TextAnchor>("进度条右侧", TextAnchor.Right),
     };
-
-    /// <summary>选中的显示器（应用预设时临时生效；null = 主显示器）。</summary>
-    [ObservableProperty]
-    private MonitorItem? _selectedMonitor;
 
     /// <summary>一次性位置预设（选中即解析为 X/Y 落盘并复位）。</summary>
     [ObservableProperty]
@@ -153,7 +142,8 @@ public partial class InstanceViewModel : TabViewModel
         if (value is null)
             return;
 
-        _manager.ApplyPreset(Window, value.Value, SelectedMonitor?.DeviceName);
+        // null = 预设作用于进度条当前所在显示器（拖到哪屏就适配哪屏）
+        _manager.ApplyPreset(Window, value.Value, null);
         SelectedPreset = null; // 一次性：解析即复位
     }
 
@@ -426,12 +416,6 @@ public partial class InstanceViewModel : TabViewModel
     public void Save() => _manager.NotifyChanged(Window);
 
     private static double Clamp(double v, double min, double max) => Math.Clamp(v, min, max);
-}
-
-/// <summary>显示器下拉项。</summary>
-public sealed record MonitorItem(string? DeviceName, string Label)
-{
-    public override string ToString() => Label;
 }
 
 /// <summary>进度条定位预设下拉项。</summary>

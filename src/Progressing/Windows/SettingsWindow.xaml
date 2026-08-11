@@ -402,10 +402,7 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="进度条定位" Width="120" VerticalAlignment="Center" />
                                         <ComboBox Width="140" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
-                                                  DisplayMemberPath="Label" VerticalAlignment="Center" ToolTip="选择后立即把进度条定位到屏幕对应位置并复位（一次性）" />
-                                        <TextBlock Text="显示器" Width="60" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                        <ComboBox Width="160" ItemsSource="{Binding Monitors}" SelectedItem="{Binding SelectedMonitor}"
-                                                  VerticalAlignment="Center" />
+                                                  DisplayMemberPath="Label" VerticalAlignment="Center" ToolTip="选择后立即把进度条定位到其当前所在屏幕的对应位置并复位（一次性）" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="文字定位" Width="120" VerticalAlignment="Center" />

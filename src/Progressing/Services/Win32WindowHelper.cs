@@ -13,6 +13,10 @@ public static class Win32WindowHelper
     private const int WS_EX_TRANSPARENT = 0x00000020;
     private const int WS_EX_LAYERED = 0x00080000;
 
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT
     {
@@ -23,6 +27,13 @@ public static class Win32WindowHelper
 
         public int Width => Right - Left;
         public int Height => Bottom - Top;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X;
+        public int Y;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -47,6 +58,15 @@ public static class Win32WindowHelper
 
     [DllImport("user32.dll")]
     private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
@@ -118,6 +138,28 @@ public static class Win32WindowHelper
 
         return PrimaryMonitor();
     }
+
+    /// <summary>当前鼠标在屏幕上的物理像素坐标（拖拽全程用物理像素，跨缩放屏幕也不跳变）。</summary>
+    public static (int X, int Y) CursorPosition()
+    {
+        GetCursorPos(out var p);
+        return (p.X, p.Y);
+    }
+
+    /// <summary>窗口左上角的物理像素坐标。</summary>
+    public static (int X, int Y) WindowPosition(IntPtr hWnd)
+    {
+        GetWindowRect(hWnd, out var r);
+        return (r.Left, r.Top);
+    }
+
+    /// <summary>
+    /// 以物理像素坐标移动窗口（不改尺寸 / Z 序 / 激活状态）。
+    /// 用于编辑模式手动拖拽：系统 DragMove 的移动循环不允许窗口顶部越过屏幕顶部，
+    /// 而这里直接 SetWindowPos 只移动分层窗口位图、不触发整窗重绘（无频闪）。
+    /// </summary>
+    public static void MoveTo(IntPtr hWnd, int x, int y)
+        => SetWindowPos(hWnd, IntPtr.Zero, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
     /// <summary>物理像素 → DIP（按该显示器缩放系数）。</summary>
     public static double PxToDip(double px, double dpiScale) => px / dpiScale;

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Progressing.Controls;
@@ -34,6 +35,9 @@ public partial class BarWindow : Window
     private Point _dragStartScreen;
     private double _textOffsetStartX;
     private double _textOffsetStartY;
+    private bool _isDraggingWindow;
+    private double _dragGrabOffsetX;
+    private double _dragGrabOffsetY;
     private SegmentNote? _activeNote;
 
     /// <summary>本条进度条的配置（与 ConfigService 中的对象同引用）。</summary>
@@ -190,7 +194,9 @@ public partial class BarWindow : Window
     /// </summary>
     public void ApplyPreset(PlacementPreset preset, string? monitorId)
     {
-        var monitor = FindMonitor(monitorId);
+        // 未指定显示器时用进度条当前所在显示器（而非主屏），
+        // 与"删除显示器下拉框、拖到哪屏就适配哪屏"的产品方向一致
+        var monitor = monitorId is not null ? FindMonitor(monitorId) : CurrentMonitor();
 
         // 物理像素 → DIP
         var scale = monitor.DpiScale;
@@ -244,7 +250,9 @@ public partial class BarWindow : Window
     /// </summary>
     public void FillScreen()
     {
-        var monitor = Win32WindowHelper.MonitorAt(Left, Top);
+        // 用进度条中心点判定所在屏：进度条比屏长时窗口比屏还宽，
+        // 窗口左上角往往落在屏幕外 / 另一块屏上，会导致取错屏而把进度条甩到别的屏幕
+        var monitor = CurrentMonitor();
         var scale = monitor.DpiScale;
         var wa = monitor.WorkArea;
         var waX = Win32WindowHelper.PxToDip(wa.X, scale);
@@ -611,20 +619,39 @@ public partial class BarWindow : Window
         }
         else
         {
-            // 拖整条进度条：交给系统原生拖拽。透明分层窗口逐帧设 Left/Top 会整窗重合成，
-            // 导致频闪 / 重影（旧帧残留 = "两个进度条"）；DragMove 仅移动窗口位图，平滑无闪。
-            // DragMove 阻塞到松开左键后返回，此时窗口已在最终位置。
-            DragMove();
-            Config.Placement.X = Left;
-            Config.Placement.Y = Top;
-            Config.Placement.Preset = null;
+            // 手动拖整条进度条：系统 DragMove 的移动循环不允许窗口顶部越过屏幕顶部，
+            // 而编辑模式窗口在进度条上方还有 240px 留白，导致进度条永远卡在约屏幕上方 2/5 处。
+            // 改为原生 SetWindowPos 逐帧移窗：可把进度条拖到屏幕最顶端，
+            // 且只移动窗口位图、不触发整窗重绘（无频闪），位置在 EndDrag 里统一落盘。
+            var hwnd = new WindowInteropHelper(this).Handle;
+            var cursor = Win32WindowHelper.CursorPosition();
+            var (winX, winY) = Win32WindowHelper.WindowPosition(hwnd);
+            _dragGrabOffsetX = cursor.X - winX;
+            _dragGrabOffsetY = cursor.Y - winY;
+            _isDraggingWindow = true;
+            CaptureMouse();
             e.Handled = true;
         }
     }
 
     private void OnWindowMouseMove(object sender, MouseEventArgs e)
     {
-        if (!_editMode || !_isDraggingText)
+        if (!_editMode)
+            return;
+
+        if (_isDraggingWindow)
+        {
+            // 全程用物理像素：鼠标与窗口的抓取偏移在按下瞬间固定，跨缩放屏幕也不会跳变
+            var cursor = Win32WindowHelper.CursorPosition();
+            Win32WindowHelper.MoveTo(
+                new WindowInteropHelper(this).Handle,
+                cursor.X - (int)_dragGrabOffsetX,
+                cursor.Y - (int)_dragGrabOffsetY);
+            e.Handled = true;
+            return;
+        }
+
+        if (!_isDraggingText)
             return;
 
         var current = e.GetPosition(null);
@@ -642,12 +669,24 @@ public partial class BarWindow : Window
 
     private void EndDrag()
     {
-        if (!_isDraggingText)
-            return;
+        if (_isDraggingWindow)
+        {
+            _isDraggingWindow = false;
+            if (IsMouseCaptured)
+                ReleaseMouseCapture();
 
-        _isDraggingText = false;
-        if (IsMouseCaptured)
-            ReleaseMouseCapture();
+            // 落盘最终位置（Left/Top 已随 WM_WINDOWPOSCHANGED 同步为最新值）
+            Config.Placement.X = Left;
+            Config.Placement.Y = Top;
+            Config.Placement.Preset = null;
+        }
+
+        if (_isDraggingText)
+        {
+            _isDraggingText = false;
+            if (IsMouseCaptured)
+                ReleaseMouseCapture();
+        }
     }
 
     /// <summary>把文字容器约束在窗口可视区域内（拖拽 / 退出编辑时调用），避免移出窗口被裁剪消失。</summary>
@@ -711,6 +750,17 @@ public partial class BarWindow : Window
         => arrangement == TextArrangement.Vertical && !string.IsNullOrEmpty(text)
             ? string.Join("\n", text.ToCharArray())
             : text ?? "";
+
+    /// <summary>进度条当前所在显示器：以进度条几何中心为锚点（窗口比屏幕大时比用窗口左上角可靠）。</summary>
+    private Win32WindowHelper.MonitorInfo CurrentMonitor()
+    {
+        var isHorizontal = Config.Orientation == BarOrientation.Horizontal;
+        var barW = isHorizontal ? Config.Length : Config.Width;
+        var barH = isHorizontal ? Config.Width : Config.Length;
+        return Win32WindowHelper.MonitorAt(
+            Left + BarOffsetX + barW / 2,
+            Top + BarOffsetY + barH / 2);
+    }
 
     private static Win32WindowHelper.MonitorInfo FindMonitor(string? deviceName)
     {
