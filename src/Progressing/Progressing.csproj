@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -7,6 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\Tray\Progressing.ico</ApplicationIcon>
+    <!-- 只保留中文 + 英文系统资源包，去掉其余 12 种语言（约 -15MB） -->
+    <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,5 +21,23 @@
   <ItemGroup>
     <Resource Include="Assets\**\*" />
   </ItemGroup>
+
+  <!-- 发布时把卸载程序（自包含单文件 uninstall.exe）一并输出到 publish 目录 -->
+  <Target Name="PublishUninstaller" AfterTargets="Publish">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)..\Uninstaller\Uninstaller.csproj"
+             Targets="Restore;Publish"
+             Properties="Configuration=$(Configuration);RuntimeIdentifier=win-x64;SelfContained=true;PublishSingleFile=true;PublishTrimmed=true" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\Uninstaller\bin\$(Configuration)\net10.0-windows\win-x64\publish\uninstall.exe"
+          DestinationFolder="$(MSBuildThisFileDirectory)bin\$(Configuration)\net10.0-windows\win-x64\publish\"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\Uninstaller\bin\$(Configuration)\net10.0-windows\win-x64\publish\uninstall.exe')" />
+  </Target>
+
+  <!-- 发布后清理调试符号文件（*.pdb，含两个 ~100MB 的原生 PDB） -->
+  <Target Name="TrimPublishOutput" AfterTargets="Publish">
+    <ItemGroup>
+      <PublishTrash Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\net10.0-windows\win-x64\publish\**\*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(PublishTrash)" />
+  </Target>
 
 </Project>

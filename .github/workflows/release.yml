@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  workflow_dispatch:            # 手动触发（首次配置后先用手动模式测试）
+  push:
+    tags: [ 'v*' ]              # 推送 v* 标签时触发（正式发布）
+
+permissions:
+  contents: write               # 创建 GitHub Release
+  actions: read                 # SignPath 需要读取本工作流上传的产物
+
+jobs:
+  build-sign-release:
+    name: 构建 + 签名 + 发布
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # 与本地发布命令完全一致：自包含 win-x64，发布目标会自动附带裁剪后的 uninstall.exe
+      - name: 发布主程序（自包含 win-x64）
+        shell: pwsh
+        run: dotnet publish src/Progressing/Progressing.csproj -c Release -r win-x64 --self-contained true -v minimal
+
+      # 未配置签名 token 时照常发布未签名版（SignPath 审核通过前也能用）
+      - name: 检查是否配置了 SignPath 签名
+        id: signpath
+        shell: bash
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          if [ -n "${SIGNPATH_API_TOKEN:-}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "未配置 SIGNPATH_API_TOKEN，本次发布保持未签名。"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 上传待签名的 exe
+        if: steps.signpath.outputs.enabled == 'true'
+        id: unsigned-exes
+        uses: actions/upload-artifact@v4
+        with:
+          name: Progressing-unsigned
+          path: |
+            src/Progressing/bin/Release/net10.0-windows/win-x64/publish/Progressing.exe
+            src/Progressing/bin/Release/net10.0-windows/win-x64/publish/uninstall.exe
+          if-no-files-found: error
+
+      - name: 提交签名请求到 SignPath
+        if: steps.signpath.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'progressing' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
+          github-artifact-id: ${{ steps.unsigned-exes.outputs.artifact-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+          # 若你的 SignPath 项目配置了指定的 artifact configuration，取消注释并填 slug：
+          # artifact-configuration-slug: release
+
+      - name: 用签名后的 exe 替换发布包
+        if: steps.signpath.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          Copy-Item signed/Progressing.exe src/Progressing/bin/Release/net10.0-windows/win-x64/publish/Progressing.exe -Force
+          Copy-Item signed/uninstall.exe src/Progressing/bin/Release/net10.0-windows/win-x64/publish/uninstall.exe -Force
+
+      - name: 压缩发布包
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -eq '') { $tag = 'manual' }
+          Compress-Archive -Path 'src/Progressing/bin/Release/net10.0-windows/win-x64/publish/*' `
+            -DestinationPath "Progressing-win-x64-$tag.zip" -CompressionLevel Optimal
+          Write-Host "zip 大小: $([math]::Round((Get-Item "Progressing-win-x64-$tag.zip").Length / 1MB, 1)) MB"
+
+      # 手动触发的构建也可在 Actions 页面直接下载产物
+      - name: 上传压缩包产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: Progressing-win-x64
+          path: Progressing-win-x64-*.zip
+          if-no-files-found: error
+
+      # 只有推送标签（正式发布）时才创建 GitHub Release
+      - name: 发布到 GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: Progressing-win-x64-*.zip
+          generate_release_notes: true

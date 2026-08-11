@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Progressing/Progressing.csproj" />
+    <Project Path="src/Uninstaller/Uninstaller.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Progressing.Core.Tests/Progressing.Core.Tests.csproj" />

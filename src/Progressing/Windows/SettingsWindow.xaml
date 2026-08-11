@@ -111,7 +111,7 @@
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,18">
                             <TextBlock Text="开机自启" Width="120" VerticalAlignment="Center" />
                             <CheckBox IsChecked="{Binding AutoStart}" VerticalAlignment="Center" ToolTip="登录 Windows 后自动启动 Progressing" />
-                            <TextBlock Text="（写入注册表 HKCU Run）" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextHintBrush}" FontSize="12" />
+                            <TextBlock Text="（启动文件夹快捷方式）" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextHintBrush}" FontSize="12" />
                         </StackPanel>
 
                         <TextBlock Grid.Row="2" Text="主题模式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />

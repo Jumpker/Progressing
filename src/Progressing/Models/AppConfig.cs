@@ -10,7 +10,7 @@ public class AppConfig
     /// <summary>界面主题模式（跟随系统 / 浅色 / 深色），默认浅色。</summary>
     public AppTheme Theme { get; set; } = AppTheme.Light;
 
-    /// <summary>开机自启（注册表 Run 键）。</summary>
+    /// <summary>开机自启（启动文件夹快捷方式）。</summary>
     public bool AutoStart { get; set; }
 
     /// <summary>颜色弹窗"最近使用颜色"（≤10 个，全局持久化）。</summary>

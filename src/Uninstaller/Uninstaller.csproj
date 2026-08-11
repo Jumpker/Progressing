@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>uninstall</AssemblyName>
+    <RootNamespace>Progressing.Uninstaller</RootNamespace>
+    <!--
+      日常 build 保持框架依赖（快速、体积小）；
+      发布属性由 Progressing.csproj 的 PublishUninstaller 目标传入：
+      自包含单文件（免装 .NET 即可运行），输出到主程序 publish 目录。
+    -->
+  </PropertyGroup>
+
+</Project>

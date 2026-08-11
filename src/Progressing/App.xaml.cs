@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -16,6 +17,9 @@ namespace Progressing;
 /// </summary>
 public partial class App : Application
 {
+    private static Mutex? _mutex;
+    private EventWaitHandle? _wakeEvent;
+
     private ConfigService? _config;
     private InstanceManager? _manager;
     private TrayService? _tray;
@@ -25,6 +29,14 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // 单实例保护：重复启动时通知已有实例弹出设置窗口，然后本实例退出
+        if (!AcquireSingleInstance())
+        {
+            SignalExistingInstance();
+            Shutdown();
+            return;
+        }
 
         // 兜底异常日志：写入运行目录 error.log，便于诊断
         DispatcherUnhandledException += (_, args) =>
@@ -74,6 +86,66 @@ public partial class App : Application
 
         // 监听系统深浅色变化："跟随系统"模式下实时同步
         SystemEvents.UserPreferenceChanged += OnSystemThemeChanged;
+
+        // 监听"再次启动"信号：收到后弹出设置窗口（单实例模式）
+        StartWakeListener();
+    }
+
+    /// <summary>单实例互斥量（Local 前缀 = 仅当前登录会话，不同用户互不影响）。</summary>
+    private const string SingleInstanceMutexName = @"Local\Progressing.SingleInstance";
+
+    /// <summary>唤醒信号：第二实例启动时通知主实例弹出设置窗口。</summary>
+    private const string WakeEventName = @"Local\Progressing.SingleInstanceWake";
+
+    /// <summary>尝试获取单实例互斥量；成功返回 true（成为主实例）。</summary>
+    private bool AcquireSingleInstance()
+    {
+        try
+        {
+            _mutex = new Mutex(false, SingleInstanceMutexName);
+            return _mutex.WaitOne(TimeSpan.Zero);
+        }
+        catch (AbandonedMutexException)
+        {
+            return true; // 前一个实例已崩溃：接管互斥量，继续作为主实例
+        }
+        catch
+        {
+            return true; // 互斥量异常时放行，避免影响正常启动
+        }
+    }
+
+    /// <summary>通知已在运行的实例弹出设置窗口。</summary>
+    private void SignalExistingInstance()
+    {
+        try
+        {
+            using var evt = EventWaitHandle.OpenExisting(WakeEventName);
+            evt.Set();
+        }
+        catch
+        {
+            // 主实例未在监听（如版本差异）：忽略，直接退出即可
+        }
+    }
+
+    /// <summary>主实例后台监听"再次启动"信号，收到后切回 UI 线程弹出设置窗口。</summary>
+    private void StartWakeListener()
+    {
+        _wakeEvent = new EventWaitHandle(false, EventResetMode.AutoReset, WakeEventName);
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                while (_wakeEvent.WaitOne())
+                    Dispatcher.BeginInvoke(() => ShowSettings());
+            }
+            catch
+            {
+                // 应用退出（句柄被释放）时终止监听线程
+            }
+        }) { IsBackground = true };
+        thread.Start();
     }
 
     /// <summary>系统主题外观变化（深/浅色切换）时，跟随系统模式下即时换肤。</summary>
@@ -130,6 +202,8 @@ public partial class App : Application
         SystemEvents.UserPreferenceChanged -= OnSystemThemeChanged;
         _config?.SaveNow();
         _tray?.Dispose();
+        _wakeEvent?.Dispose(); // 释放唤醒句柄，监听线程随之退出
+        _mutex?.Dispose();     // 释放互斥量，下次启动可正常成为主实例
         base.OnExit(e);
     }
 }
