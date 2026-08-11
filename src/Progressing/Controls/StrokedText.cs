@@ -11,9 +11,6 @@ namespace Progressing.Controls;
 /// </summary>
 public class StrokedText : FrameworkElement
 {
-    private static readonly Typeface DefaultTypeface =
-        new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-
     public static readonly DependencyProperty TextProperty = DependencyProperty.Register(
         nameof(Text), typeof(string), typeof(StrokedText),
         new FrameworkPropertyMetadata("", FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
@@ -21,6 +18,10 @@ public class StrokedText : FrameworkElement
     public static readonly DependencyProperty FontSizeProperty = DependencyProperty.Register(
         nameof(FontSize), typeof(double), typeof(StrokedText),
         new FrameworkPropertyMetadata(26.0, FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty FontWeightProperty = DependencyProperty.Register(
+        nameof(FontWeight), typeof(FontWeight), typeof(StrokedText),
+        new FrameworkPropertyMetadata(FontWeights.Normal, FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
 
     public static readonly DependencyProperty ForegroundProperty = DependencyProperty.Register(
         nameof(Foreground), typeof(Brush), typeof(StrokedText),
@@ -44,6 +45,13 @@ public class StrokedText : FrameworkElement
     {
         get => (double)GetValue(FontSizeProperty);
         set => SetValue(FontSizeProperty, value);
+    }
+
+    /// <summary>字重（Regular / Bold 等）。</summary>
+    public FontWeight FontWeight
+    {
+        get => (FontWeight)GetValue(FontWeightProperty);
+        set => SetValue(FontWeightProperty, value);
     }
 
     /// <summary>文字填充色。</summary>
@@ -104,7 +112,7 @@ public class StrokedText : FrameworkElement
             Text ?? "",
             CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight,
-            DefaultTypeface,
+            new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeight, FontStretches.Normal),
             FontSize,
             Foreground ?? Brushes.Black,
             1.0);

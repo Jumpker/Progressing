@@ -1,0 +1,34 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ================================================================
+         浅色主题设计令牌（Design Tokens）—— 参考 Ant Design / TDesign
+         与 Colors.Dark.xaml 保持同一组 key，运行时整字典替换即可换肤。
+         进度条本体配色见 Core/Palettes.cs（二者保持同族）。
+         ================================================================ -->
+
+    <!-- 中性色 -->
+    <SolidColorBrush x:Key="WindowBgBrush" Color="#F7F8FA" />
+    <SolidColorBrush x:Key="PanelBgBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="HoverBrush" Color="#F2F3F5" />
+    <SolidColorBrush x:Key="PressedBrush" Color="#E8EAED" />
+    <SolidColorBrush x:Key="BorderLineBrush" Color="#E5E6EB" />
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="#C9CDD4" />
+    <SolidColorBrush x:Key="DividerBrush" Color="#ECEDF0" />
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#C9CDD4" />
+    <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#A8ADB5" />
+    <SolidColorBrush x:Key="SegHoverBrush" Color="#E5E7EB" />
+
+    <!-- 文字层级 -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1D2129" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#4E5969" />
+    <SolidColorBrush x:Key="TextHintBrush" Color="#86909C" />
+
+    <!-- 品牌主色（现代蓝） -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#1677FF" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#4096FF" />
+    <SolidColorBrush x:Key="AccentActiveBrush" Color="#0958D9" />
+    <SolidColorBrush x:Key="AccentLightBrush" Color="#E6F4FF" />
+    <SolidColorBrush x:Key="AccentBorderBrush" Color="#91CAFF" />
+
+</ResourceDictionary>

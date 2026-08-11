@@ -16,9 +16,12 @@ public class TextStyleConfig
     public TextArrangement Arrangement { get; set; } = TextArrangement.Horizontal;
 
     /// <summary>文字大小（DIP）。</summary>
-    public double FontSize { get; set; } = 26.0;
+    public double FontSize { get; set; } = 28.9;
 
-    public string Color { get; set; } = "#2D82BC";
+    /// <summary>文字加粗。</summary>
+    public bool Bold { get; set; }
+
+    public string Color { get; set; } = "#4D9DDA";
 
     /// <summary>文字边框；默认开启、黑色。</summary>
     public BorderConfig Border { get; set; } = BorderConfig.TextDefault();
@@ -29,6 +32,7 @@ public class TextStyleConfig
         Anchor = Anchor,
         Arrangement = Arrangement,
         FontSize = FontSize,
+        Bold = Bold,
         Color = Color,
         Border = Border.Clone(),
     };
@@ -37,8 +41,9 @@ public class TextStyleConfig
     {
         Anchor = TextAnchor.Top,
         Arrangement = TextArrangement.Horizontal,
-        FontSize = 26.0,
-        Color = "#2D82BC",
+        FontSize = 28.9,
+        Bold = false,
+        Color = "#4D9DDA",
         Border = BorderConfig.TextDefault(),
     };
 }

@@ -19,8 +19,8 @@ public static class IconService
     public static BitmapImage LoadBuiltinPointer() => _builtin ??= RenderBuiltinPointer();
 
     /// <summary>
-    /// 程序化绘制内置指针：64×64 透明底、实心水滴、尖端朝上（居中缩放适配画布）。
-    /// 不依赖 SVG 资源文件与 Svg.Skia 解析，避免资源打包 / 解析失败导致指针空白。
+    /// 程序化绘制内置指针：64×64 透明底、实心导航箭头（尖端朝上、尾部带凹口），居中缩放适配画布。
+    /// 方向由 BarWindow 按"时间增长方向"旋转（横放向右 / 竖放向下，镜像反向）。
     /// </summary>
     private static BitmapImage RenderBuiltinPointer()
     {
@@ -29,14 +29,14 @@ public static class IconService
         canvas.Clear(SKColors.Transparent);
 
         var builder = new SKPathBuilder();
-        builder.MoveTo(16, 4);                                  // 尖端
-        builder.CubicTo(21, 10, 26, 14, 26, 19);                // 右上曲线
-        builder.ArcTo(10, 10, 0, SKPathArcSize.Small, SKPathDirection.Clockwise, 6, 19); // 底部圆弧
-        builder.CubicTo(6, 14, 11, 10, 16, 4);                  // 左上曲线回到尖端
-        builder.Close();
+        builder.MoveTo(32, 5);   // 尖端
+        builder.LineTo(52, 50);  // 右下角（右尾）
+        builder.LineTo(32, 44);  // 尾部缺口中心（V 形凹口）
+        builder.LineTo(12, 50);  // 左下角（左尾）
+        builder.Close();         // 闭合回到尖端，构成左缘
         using var path = builder.Detach();
 
-        // 将水滴包围盒居中到画布中心：保证图形中心 = 位图中心，
+        // 将箭头包围盒居中到画布中心：保证图形中心 = 位图中心，
         // 指针 Image 放大 / 缩小时图形始终以中心为基准缩放，不会左右漂移
         // （与 RasterizeSvg 自定义指针的居中逻辑保持一致）。
         var bounds = path.Bounds;
@@ -44,10 +44,21 @@ public static class IconService
             (RasterSize - bounds.Width) / 2 - bounds.Left,
             (RasterSize - bounds.Height) / 2 - bounds.Top);
 
+        // 先画白色描边：指针走在上色时间段上（如蓝色段）也保持辨识度
+        using var outlinePaint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 4,
+            StrokeJoin = SKStrokeJoin.Round,
+            Color = SKColors.White,
+            IsAntialias = true,
+        };
+        canvas.DrawPath(path, outlinePaint);
+
         using var paint = new SKPaint
         {
             Style = SKPaintStyle.Fill,
-            Color = SKColor.Parse("#2D82BC"),
+            Color = SKColor.Parse("#1677FF"), // 品牌现代蓝，与 Theme.xaml AccentBrush 同族
             IsAntialias = true,
         };
         canvas.DrawPath(path, paint);

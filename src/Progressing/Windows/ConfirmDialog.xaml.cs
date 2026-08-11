@@ -1,31 +1,29 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
-using Progressing.Models;
 
 namespace Progressing.Windows;
 
 /// <summary>
-/// 备注重叠冲突确认弹窗（产品设计书 §3.3.1）：列出全部冲突备注，确认则删除、取消则放弃本次操作。
+/// 通用确认弹窗（无边框圆角 + 标题栏拖拽）：询问用户是否执行破坏性操作（如删除时间段）。
 /// </summary>
-public partial class ConflictDialog : Window
+public partial class ConfirmDialog : Window
 {
     public bool Confirmed { get; private set; }
 
-    public ConflictDialog(IReadOnlyList<SegmentNote> conflicts)
+    public ConfirmDialog(string message, string title = "确认", string okText = "删除")
     {
         InitializeComponent();
-        ConflictList.ItemsSource = conflicts.Select(c => new ConflictItem
-        {
-            Range = $"{c.Start} ~ {c.End}",
-            Text = string.IsNullOrWhiteSpace(c.Text) ? "（无文案）" : c.Text,
-        }).ToList();
+        TitleText.Text = title;
+        MessageText.Text = message;
+        OkButton.Content = okText;
     }
 
-    public static bool Ask(Window owner, IReadOnlyList<SegmentNote> conflicts)
+    public static bool Ask(Window owner, string message, string title = "确认", string okText = "删除")
     {
-        var dialog = new ConflictDialog(conflicts)
+        var dialog = new ConfirmDialog(message, title, okText)
         {
             Owner = owner,
         };
@@ -52,7 +50,7 @@ public partial class ConflictDialog : Window
         DragMove();
     }
 
-    /// <summary>原点击目标是否位于可交互控件上（按钮 / 输入框等），是则不触发窗口拖动。</summary>
+    /// <summary>原点击目标是否位于可交互控件上（按钮等），是则不触发窗口拖动。</summary>
     private static bool IsOnInteractiveElement(object source)
     {
         for (var d = source as DependencyObject; d is not null; d = VisualTreeHelper.GetParent(d))
@@ -62,12 +60,5 @@ public partial class ConflictDialog : Window
         }
 
         return false;
-    }
-
-    private sealed class ConflictItem
-    {
-        public required string Range { get; init; }
-
-        public required string Text { get; init; }
     }
 }

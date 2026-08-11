@@ -29,6 +29,9 @@ public partial class TimeTextBox : UserControl
     /// <summary>时间变化事件（手动输入或属性赋值均触发）。</summary>
     public event EventHandler? TimeChanged;
 
+    /// <summary>提交事件：失焦补全完成后触发（供上层做列表自动排序等收尾动作）。</summary>
+    public event EventHandler? Committed;
+
     private bool _syncing;
 
     public TimeTextBox()
@@ -107,6 +110,8 @@ public partial class TimeTextBox : UserControl
         {
             _syncing = false;
         }
+
+        Committed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>失焦补全：空 → 清空；1~2 位 → HH:00；3 位 → H:MM；4 位 → HH:MM；越界收敛到 0~23:59。</summary>

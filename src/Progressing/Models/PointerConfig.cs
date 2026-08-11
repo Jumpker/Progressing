@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 namespace Progressing.Models;
 
 /// <summary>
-/// 指针配置：图标来源 / 指向方向（横放与竖放分别存储，切换方向互不干扰）/ 大小。
+/// 指针配置：图标来源 / 自定义文件路径 / 大小。
+/// 内置箭头方向由 BarWindow 按"时间增长方向"自动决定（横放向右、竖放向下，镜像反向），无需配置。
 /// </summary>
 public class PointerConfig
 {
@@ -15,15 +16,7 @@ public class PointerConfig
     public string? FilePath { get; set; }
 
     /// <summary>指针显示尺寸（建议 16 ~ 32px）。</summary>
-    public double Size { get; set; } = 16.0;
-
-    /// <summary>横放时生效的指向。</summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public PointerDirection HorizontalDirection { get; set; } = PointerDirection.Up;
-
-    /// <summary>竖放时生效的指向。</summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public PointerDirection VerticalDirection { get; set; } = PointerDirection.Left;
+    public double Size { get; set; } = 38.0;
 
     /// <summary>深拷贝。</summary>
     public PointerConfig Clone() => new()
@@ -31,16 +24,12 @@ public class PointerConfig
         Source = Source,
         FilePath = FilePath,
         Size = Size,
-        HorizontalDirection = HorizontalDirection,
-        VerticalDirection = VerticalDirection,
     };
 
     public static PointerConfig Default() => new()
     {
         Source = PointerSource.Builtin,
         FilePath = null,
-        Size = 16.0,
-        HorizontalDirection = PointerDirection.Up,
-        VerticalDirection = PointerDirection.Left,
+        Size = 38.0,
     };
 }

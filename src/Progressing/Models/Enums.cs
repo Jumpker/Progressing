@@ -30,16 +30,6 @@ public enum TextArrangement
     Vertical,
 }
 
-/// <summary>指针指向方向（相对进度条）。</summary>
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum PointerDirection
-{
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
 /// <summary>指针图标来源。</summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum PointerSource
@@ -72,4 +62,13 @@ public enum PlacementPreset
     BottomCenter,
     LeftCenter,
     RightCenter,
+}
+
+/// <summary>界面主题模式：跟随系统 / 浅色 / 深色。</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum AppTheme
+{
+    System,
+    Light,
+    Dark,
 }

@@ -19,8 +19,8 @@ public class BorderConfig
         Width = Width,
     };
 
-    public static BorderConfig Default() => new() { Enabled = false, Color = "#000000", Width = 1.0 };
+    public static BorderConfig Default() => new() { Enabled = true, Color = "#601198", Width = 1.0 };
 
-    /// <summary>备注文字边框默认：开启、黑色。</summary>
-    public static BorderConfig TextDefault() => new() { Enabled = true, Color = "#000000", Width = 1.0 };
+    /// <summary>备注文字边框默认：开启、黑色、2px。</summary>
+    public static BorderConfig TextDefault() => new() { Enabled = true, Color = "#000000", Width = 2.0 };
 }

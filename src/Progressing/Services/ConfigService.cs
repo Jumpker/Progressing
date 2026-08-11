@@ -135,6 +135,10 @@ public class ConfigService : IDisposable
     /// <summary>对加载结果做防御性修复：null 嵌套对象补齐，保证后续使用无 NRE。</summary>
     private static void Normalize(AppConfig config)
     {
+        // 防御非法主题值（config.json 被手动改坏时回退默认浅色）
+        if (!Enum.IsDefined(typeof(AppTheme), config.Theme))
+            config.Theme = AppTheme.Light;
+
         config.RecentColors ??= new List<string>();
         config.Instances ??= new List<BarConfig>();
         foreach (var instance in config.Instances)
@@ -144,9 +148,9 @@ public class ConfigService : IDisposable
             instance.Pointer ??= PointerConfig.Default();
             instance.TextStyle ??= TextStyleConfig.Default();
             instance.TextStyle.Border ??= BorderConfig.TextDefault();
-            // 旧默认值升级：颜色 #5A5A5A → #2D82BC；边框旧默认（关 / 黑 / 1px）→ 开启
-            if (instance.TextStyle.Color == "#5A5A5A")
-                instance.TextStyle.Color = "#2D82BC";
+            // 旧默认值升级：旧文字色 #5A5A5A / #2D82BC → 新默认 #4D9DDA；边框旧默认（关 / 黑 / 1px）→ 开启
+            if (instance.TextStyle.Color is "#5A5A5A" or "#2D82BC")
+                instance.TextStyle.Color = "#4D9DDA";
             if (instance.TextStyle.Border is { Enabled: false, Color: "#000000", Width: 1.0 })
                 instance.TextStyle.Border.Enabled = true;
             if (instance.TextStyle.FontSize <= 0)

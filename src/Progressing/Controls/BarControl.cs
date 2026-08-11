@@ -63,16 +63,47 @@ public class BarControl : FrameworkElement
         // 1. 轨道
         BarRenderer.DrawTrack(dc, barRect);
 
-        // 2. 彩色段（同边框样式：仅当进度条边框开启时沿用）
-        Pen? segmentBorderPen = config.Border.Enabled
-            ? FrozenPen(new SolidColorBrush(Palettes.FromHex(config.Border.Color)), config.Border.Width)
-            : null;
-
-        foreach (var note in config.Notes)
+        // 2. 彩色段（时间上相接的段之间无缝：相接处直角、仅进度条外端胶囊；不沿用每段独立描边）
+        var notes = config.Notes;
+        for (var i = 0; i < notes.Count; i++)
         {
+            var note = notes[i];
             var color = ResolveNoteColor(note);
             var rect = GetSegmentRect(config, note);
-            BarRenderer.DrawSegment(dc, rect, color, segmentBorderPen);
+            var (axisStart, axisEnd) = AxisExtent(rect, config.Orientation);
+
+            // 镜像后时间顺序与空间顺序相反：物理左侧相邻的是"时间更晚"的段。
+            // 相接判定基于时间（上一段结束 == 本段开始），与镜像无关。
+            var adjacentLeft = config.Mirrored
+                ? i + 1 < notes.Count && TimeNear(notes[i + 1].StartTime, note.EndTime)
+                : i > 0 && TimeNear(notes[i - 1].EndTime, note.StartTime);
+            var adjacentRight = config.Mirrored
+                ? i > 0 && TimeNear(notes[i - 1].EndTime, note.StartTime)
+                : i + 1 < notes.Count && TimeNear(notes[i + 1].StartTime, note.EndTime);
+
+            // 圆头只在进度条两端（映射坐标 0 / Length）或自由端出现；相接处为直角
+            var roundStart = axisStart <= 0.5 || !adjacentLeft;
+            var roundEnd = axisEnd >= config.Length - 0.5 || !adjacentRight;
+
+            // 相接处防抗锯齿接缝：后画的段盖住先画段伸出的部分。
+            // 非镜像：时间序 = 空间序，延伸右端；镜像：时间序与空间序相反，延伸左端。
+            if (config.Mirrored)
+            {
+                if (!roundStart)
+                {
+                    rect = config.Orientation == BarOrientation.Horizontal
+                        ? new Rect(rect.X - 0.75, rect.Y, rect.Width + 0.75, rect.Height)
+                        : new Rect(rect.X, rect.Y - 0.75, rect.Width, rect.Height + 0.75);
+                }
+            }
+            else if (!roundEnd)
+            {
+                rect = config.Orientation == BarOrientation.Horizontal
+                    ? new Rect(rect.X, rect.Y, rect.Width + 0.75, rect.Height)
+                    : new Rect(rect.X, rect.Y, rect.Width, rect.Height + 0.75);
+            }
+
+            BarRenderer.DrawSegment(dc, rect, color, config.Orientation, roundStart, roundEnd);
         }
 
         // 3. 时间标注（指针命中时间段时）
@@ -102,6 +133,16 @@ public class BarControl : FrameworkElement
         => config.Orientation == BarOrientation.Horizontal
             ? new Rect(0, 0, config.Length, config.Width)
             : new Rect(0, 0, config.Width, config.Length);
+
+    /// <summary>段矩形沿进度条轴向的起止位置（横放取 X、竖放取 Y）。</summary>
+    private static (double Start, double End) AxisExtent(Rect rect, BarOrientation orientation)
+        => orientation == BarOrientation.Horizontal
+            ? (rect.X, rect.X + rect.Width)
+            : (rect.Y, rect.Y + rect.Height);
+
+    /// <summary>两个时刻是否"首尾相接"（同一分钟，即 hh:mm 精度相等）。</summary>
+    private static bool TimeNear(TimeSpan a, TimeSpan b)
+        => (a - b).Duration() < TimeSpan.FromMinutes(1);
 
     private static Rect GetSegmentRect(BarConfig config, SegmentNote note)
     {

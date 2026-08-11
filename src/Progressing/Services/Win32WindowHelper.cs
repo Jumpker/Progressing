@@ -107,6 +107,18 @@ public static class Win32WindowHelper
         => EnumerateMonitors().FirstOrDefault(m => m.IsPrimary)
            ?? new MonitorInfo("primary", SystemParameters.WorkArea, SystemParameters.WorkArea, 1.0, true);
 
+    /// <summary>包含指定 DIP 点的显示器（按各显示器自身缩放换算后判定；找不到时退回主显示器）。</summary>
+    public static MonitorInfo MonitorAt(double dipX, double dipY)
+    {
+        foreach (var m in EnumerateMonitors())
+        {
+            if (m.Bounds.Contains(new Point(dipX * m.DpiScale, dipY * m.DpiScale)))
+                return m;
+        }
+
+        return PrimaryMonitor();
+    }
+
     /// <summary>物理像素 → DIP（按该显示器缩放系数）。</summary>
     public static double PxToDip(double px, double dpiScale) => px / dpiScale;
 

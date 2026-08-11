@@ -7,6 +7,9 @@ namespace Progressing.Models;
 /// </summary>
 public class BarConfig
 {
+    /// <summary>进度条长度上限（DIP）：足以铺满 4K 屏幕宽度。</summary>
+    public const double MaxLength = 4000.0;
+
     /// <summary>实例唯一标识。</summary>
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
@@ -22,14 +25,14 @@ public class BarConfig
     /// <summary>镜像：以进度条中心为对称轴翻转时间轴。</summary>
     public bool Mirrored { get; set; }
 
-    /// <summary>长度（200 ~ 2000 DIP）。</summary>
-    public double Length { get; set; } = 600.0;
+    /// <summary>长度（200 ~ MaxLength DIP）。</summary>
+    public double Length { get; set; } = 1000.6;
 
-    /// <summary>宽度 / 厚度（2 ~ 10 DIP）。</summary>
-    public double Width { get; set; } = 4.0;
+    /// <summary>宽度 / 厚度（2 ~ 15 DIP）。</summary>
+    public double Width { get; set; } = 5.4;
 
-    /// <summary>透明度（0 ~ 100，默认 100）。</summary>
-    public int Opacity { get; set; } = 100;
+    /// <summary>透明度（0 ~ 100，默认 60）。</summary>
+    public int Opacity { get; set; } = 60;
 
     /// <summary>置顶。</summary>
     public bool Topmost { get; set; } = true;
@@ -83,9 +86,9 @@ public class BarConfig
         Visible = true,
         Orientation = BarOrientation.Horizontal,
         Mirrored = false,
-        Length = 600.0,
-        Width = 4.0,
-        Opacity = 100,
+        Length = 1000.6,
+        Width = 5.4,
+        Opacity = 60,
         Topmost = true,
         Border = BorderConfig.Default(),
         // 默认吸附主屏底部居中（一次性预设：启动定位后解析为 X/Y 并复位）

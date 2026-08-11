@@ -51,6 +51,34 @@ public partial class SettingsWindow : Window
     private void AddInstance_Click(object sender, RoutedEventArgs e)
         => _vm.AddInstanceCommand.Execute(null);
 
+    // ---------------- 标签右键菜单（重命名 / 复制 / 删除） ----------------
+
+    /// <summary>右键菜单对应的实例 VM（命令在 MainViewModel 上，故经 Click 事件取 PlacementTarget 的 DataContext）。</summary>
+    private static InstanceViewModel? TabVmFromMenu(object sender)
+    {
+        var menuItem = (MenuItem)sender;
+        var menu = menuItem.Parent as ContextMenu;
+        return (menu?.PlacementTarget as FrameworkElement)?.DataContext as InstanceViewModel;
+    }
+
+    private void TabRename_Click(object sender, RoutedEventArgs e)
+    {
+        if (TabVmFromMenu(sender) is { } vm)
+            _vm.RenameInstanceCommand.Execute(vm);
+    }
+
+    private void TabClone_Click(object sender, RoutedEventArgs e)
+    {
+        if (TabVmFromMenu(sender) is { } vm)
+            _vm.CloneInstanceCommand.Execute(vm);
+    }
+
+    private void TabDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (TabVmFromMenu(sender) is { } vm)
+            _vm.DeleteInstanceCommand.Execute(vm);
+    }
+
     private void RenameBox_KeyDown(object sender, KeyEventArgs e)
     {
         var box = (TextBox)sender;
@@ -94,9 +122,31 @@ public partial class SettingsWindow : Window
         ResolveConflicts(vm, keep: vm.Notes[^1]);
     }
 
-    /// <summary>以进度条几何中心为原点顺时针旋转 90°（横放 ↔ 竖放）。</summary>
-    private void Rotate_Click(object sender, RoutedEventArgs e)
-        => CurrentInstance?.Rotate();
+    /// <summary>切换方向：横向 / 竖向（保持进度条几何中心不动）。</summary>
+    private void SetHorizontal_Click(object sender, RoutedEventArgs e)
+        => CurrentInstance?.SetOrientation(BarOrientation.Horizontal);
+
+    private void SetVertical_Click(object sender, RoutedEventArgs e)
+        => CurrentInstance?.SetOrientation(BarOrientation.Vertical);
+
+    /// <summary>备注文字排列方向：横排 / 竖排。</summary>
+    private void SetArrangementHorizontal_Click(object sender, RoutedEventArgs e)
+    {
+        var vm = CurrentInstance;
+        if (vm is not null)
+            vm.TextArrangement = TextArrangement.Horizontal;
+    }
+
+    private void SetArrangementVertical_Click(object sender, RoutedEventArgs e)
+    {
+        var vm = CurrentInstance;
+        if (vm is not null)
+            vm.TextArrangement = TextArrangement.Vertical;
+    }
+
+    /// <summary>长度铺满当前屏幕（横放 = 宽度、竖放 = 高度）。</summary>
+    private void FillScreenLength_Click(object sender, RoutedEventArgs e)
+        => CurrentInstance?.FillScreen();
 
     private void NoteEditor_Loaded(object sender, RoutedEventArgs e)
     {
@@ -106,8 +156,7 @@ public partial class SettingsWindow : Window
         editor.RecentColors = _recentColors;
         editor.Changed += NoteEditor_Changed;
         editor.DeleteRequested += NoteEditor_Delete;
-        editor.MoveUpRequested += (_, _) => NoteEditor_Move(editor, -1);
-        editor.MoveDownRequested += (_, _) => NoteEditor_Move(editor, +1);
+        editor.SortRequested += NoteEditor_Sort;
     }
 
     private void NoteEditor_Unloaded(object sender, RoutedEventArgs e)
@@ -115,6 +164,7 @@ public partial class SettingsWindow : Window
         var editor = (SegmentEditor)sender;
         editor.Changed -= NoteEditor_Changed;
         editor.DeleteRequested -= NoteEditor_Delete;
+        editor.SortRequested -= NoteEditor_Sort;
     }
 
     private void NoteEditor_Changed(object? sender, EventArgs e)
@@ -151,15 +201,20 @@ public partial class SettingsWindow : Window
         var vm = CurrentInstance;
         if (vm is null)
             return;
+
+        if (!ConfirmDialog.Ask(this, "确定删除这个时间段？删除后其备注与颜色将一并移除。", "删除时间段"))
+            return;
+
         vm.RemoveNote(((SegmentEditor)sender!).Note);
     }
 
-    private void NoteEditor_Move(SegmentEditor editor, int delta)
+    /// <summary>起止时间提交后按时间自动排序。</summary>
+    private void NoteEditor_Sort(object? sender, EventArgs e)
     {
         var vm = CurrentInstance;
         if (vm is null)
             return;
-        vm.MoveNote(editor.Note, delta);
+        vm.SortNotes();
     }
 
     /// <summary>新增后的重叠校验：确认则删除与新建备注重叠的已有备注（保留新建），否则移除刚新增的备注。</summary>

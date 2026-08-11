@@ -2,9 +2,37 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="颜色选择" Width="460" Height="560"
+        WindowStyle="None" AllowsTransparency="True"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="NoResize"
-        Background="#F7F6F3">
-    <Grid Margin="16">
+        Background="Transparent"
+        TextElement.Foreground="{DynamicResource TextPrimaryBrush}">
+    <Border x:Name="RootBorder" Margin="12"
+            Background="{DynamicResource PanelBgBrush}"
+            BorderBrush="{DynamicResource BorderLineBrush}" BorderThickness="1"
+            CornerRadius="10">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.22" />
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- 标题栏（拖拽区） -->
+            <Grid x:Name="DragStrip" Grid.Row="0" Height="40" Background="Transparent"
+                  MouseLeftButtonDown="DragStrip_MouseLeftButtonDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="颜色选择" FontWeight="SemiBold" Margin="16,0,0,0" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="✕" Width="24" Height="24" Padding="0,0"
+                        Margin="0,0,10,0" VerticalAlignment="Center" Click="Cancel_Click" ToolTip="关闭" />
+            </Grid>
+
+            <!-- 内容 -->
+            <Grid Grid.Row="1" Margin="16,0,16,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -27,7 +55,7 @@
                 <DataTemplate>
                     <Border Width="30" Height="30" Margin="3" CornerRadius="6"
                             Background="{Binding Brush}"
-                            BorderBrush="#40000000" BorderThickness="1"
+                            BorderBrush="{DynamicResource BorderLineBrush}" BorderThickness="1"
                             Cursor="Hand">
                         <Border.InputBindings>
                             <MouseBinding MouseAction="LeftClick" Command="{Binding SelectCommand}" />
@@ -54,7 +82,7 @@
             <!-- 饱和度/明度方块 -->
             <Border x:Name="SbCanvas" Grid.Row="0" Grid.Column="0"
                     Width="220" Height="150" CornerRadius="6"
-                    BorderBrush="#40000000" BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderLineBrush}" BorderThickness="1"
                     MouseLeftButtonDown="SbCanvas_MouseDown"
                     MouseLeftButtonUp="SbCanvas_MouseUp"
                     MouseMove="SbCanvas_MouseMove">
@@ -87,7 +115,7 @@
                 <Slider x:Name="HueSlider" Minimum="0" Maximum="360" Value="0" TickFrequency="1"
                         ValueChanged="HueSlider_ValueChanged" />
                 <Grid Height="8" Margin="0,4,0,0">
-                    <Border CornerRadius="4" BorderBrush="#40000000" BorderThickness="1">
+                    <Border CornerRadius="4" BorderBrush="{DynamicResource BorderLineBrush}" BorderThickness="1">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                                 <GradientStop Color="#FF0000" Offset="0.00" />
@@ -106,8 +134,8 @@
             <!-- 预览 + HEX 输入 -->
             <StackPanel Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" Margin="12,0,0,0">
                 <Border x:Name="PreviewSwatch" Width="64" Height="64" CornerRadius="8"
-                        BorderBrush="#40000000" BorderThickness="1" />
-                <TextBlock Text="HEX" Margin="0,10,0,2" FontSize="11" Foreground="#888" />
+                        BorderBrush="{DynamicResource BorderLineBrush}" BorderThickness="1" />
+                <TextBlock Text="HEX" Margin="0,10,0,2" FontSize="11" Foreground="{DynamicResource TextHintBrush}" />
                 <TextBox x:Name="HexInput" Width="80" TextAlignment="Center"
                          TextChanged="HexInput_TextChanged" />
             </StackPanel>
@@ -125,7 +153,7 @@
                 <DataTemplate>
                     <Border Width="24" Height="24" CornerRadius="5" Margin="3"
                             Background="{Binding Brush}"
-                            BorderBrush="#40000000" BorderThickness="1" Cursor="Hand"
+                            BorderBrush="{DynamicResource BorderLineBrush}" BorderThickness="1" Cursor="Hand"
                             ToolTip="{Binding Hex}">
                         <Border.InputBindings>
                             <MouseBinding MouseAction="LeftClick" Command="{Binding SelectCommand}" />
@@ -138,7 +166,10 @@
         <!-- 按钮 -->
         <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
             <Button Content="取消" Width="80" Height="28" Margin="0,0,8,0" Click="Cancel_Click" />
-            <Button Content="确定" Width="80" Height="28" IsDefault="True" Click="Ok_Click" />
+            <Button Content="确定" Width="80" Height="28" IsDefault="True"
+                    Style="{StaticResource PrimaryButtonStyle}" Click="Ok_Click" />
         </StackPanel>
-    </Grid>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

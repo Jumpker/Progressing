@@ -84,7 +84,8 @@ public partial class BarWindow : Window
     {
         var c = Config;
         var isHorizontal = c.Orientation == BarOrientation.Horizontal;
-        var textBand = TextBandHeight(c.TextStyle);
+        var maxNoteLen = c.Notes.Count == 0 ? 1 : Math.Max(1, c.Notes.Max(n => n.Text?.Length ?? 0));
+        var (textW, textH) = MeasureTextBand(c.TextStyle, maxNoteLen);
         var labelBand = LabelLayoutSolver.DefaultFontSize * 1.5 + LabelLayoutSolver.LabelGap;
         var pad = _editMode ? EditModePadding : 0;
 
@@ -95,10 +96,11 @@ public partial class BarWindow : Window
 
         // 文字带按锚点方向预留（与横竖放无关）：上方 → 顶部、下方 → 底部、左侧 → 左部、右侧 → 右部，
         // 保证任意方向（无论横放还是竖放）文字都能落在窗口内而不被裁剪
-        var textTop = c.TextStyle.Anchor == TextAnchor.Top ? textBand + TextGap : 0;
-        var textBottom = c.TextStyle.Anchor == TextAnchor.Bottom ? textBand + TextGap : 0;
-        var textLeft = c.TextStyle.Anchor == TextAnchor.Left ? textBand + TextGap : 0;
-        var textRight = c.TextStyle.Anchor == TextAnchor.Right ? textBand + TextGap : 0;
+        // 文字带按锚点方向预留：上方 / 下方 → 高度，左侧 / 右侧 → 宽度（横排宽随文本长度、竖排高随文本长度）
+        var textTop = c.TextStyle.Anchor == TextAnchor.Top ? textH + TextGap : 0;
+        var textBottom = c.TextStyle.Anchor == TextAnchor.Bottom ? textH + TextGap : 0;
+        var textLeft = c.TextStyle.Anchor == TextAnchor.Left ? textW + TextGap : 0;
+        var textRight = c.TextStyle.Anchor == TextAnchor.Right ? textW + TextGap : 0;
 
         // 时间标注带固定在外侧：横放在上 / 竖放在左
         var labelTop = isHorizontal ? labelBand : 0;
@@ -111,7 +113,7 @@ public partial class BarWindow : Window
         var leftSpace = textLeft + labelLeft + pad + (!isHorizontal ? pointerProtrude : 0);
         var rightSpace = textRight + pad + (!isHorizontal ? pointerProtrude : 0);
 
-        var length = Math.Clamp(c.Length, 200, 2000);
+        var length = Math.Clamp(c.Length, 200, BarConfig.MaxLength);
 
         // 轨道始终放在四侧留白的中心区域（横放水平铺满长度 / 竖放垂直铺满长度）
         if (isHorizontal)
@@ -157,7 +159,8 @@ public partial class BarWindow : Window
         JumpPointerToNow();
     }
 
-    /// <summary>应用初始 / 预设位置（仅首帧与预设命令调用）。
+    /// <summary>
+    /// 应用初始 / 预设位置（仅首帧与预设命令调用）。
     /// 带一次性预设时解析为目标显示器坐标；旧配置坐标从未设置（0,0）时吸附主屏底部居中。</summary>
     public void ApplyInitialPlacement()
     {
@@ -236,6 +239,37 @@ public partial class BarWindow : Window
     }
 
     /// <summary>
+    /// 把进度条长度设为所在屏幕工作区沿进度条轴的长度（横放 = 屏幕宽度、竖放 = 屏幕高度），
+    /// 并沿该轴贴到屏幕工作区边缘（横放贴左缘、竖放贴上缘）；跨轴位置保持不变。
+    /// </summary>
+    public void FillScreen()
+    {
+        var monitor = Win32WindowHelper.MonitorAt(Left, Top);
+        var scale = monitor.DpiScale;
+        var wa = monitor.WorkArea;
+        var waX = Win32WindowHelper.PxToDip(wa.X, scale);
+        var waY = Win32WindowHelper.PxToDip(wa.Y, scale);
+        var waW = Win32WindowHelper.PxToDip(wa.Width, scale);
+        var waH = Win32WindowHelper.PxToDip(wa.Height, scale);
+
+        Config.Length = Config.Orientation == BarOrientation.Horizontal
+            ? Math.Clamp(waW, 200, BarConfig.MaxLength)
+            : Math.Clamp(waH, 200, BarConfig.MaxLength);
+
+        ApplyConfig(); // 用新长度重新布局窗口尺寸（BarOffset 不随长度变化）
+
+        // 进度条沿填充轴贴到工作区边缘：窗口左上角 = 目标位置 − 进度条在窗口内的偏移
+        if (Config.Orientation == BarOrientation.Horizontal)
+            Left = waX - BarOffsetX;
+        else
+            Top = waY - BarOffsetY;
+
+        Config.Placement.X = Left;
+        Config.Placement.Y = Top;
+        Config.Placement.Preset = null;
+    }
+
+    /// <summary>
     /// 以进度条几何中心为原点顺时针旋转 90°（横放 ↔ 竖放）：
     /// 切换方向并平移窗口，使进度条中心保持在旋转前的屏幕位置不动；
     /// 指针补间轴先于 ApplyConfig 切换，其内部的 JumpPointerToNow 才会落到新轴。
@@ -277,11 +311,11 @@ public partial class BarWindow : Window
         if (c.Pointer.Source == PointerSource.Builtin)
         {
             PointerImage.Source = IconService.LoadBuiltinPointer();
-            // 内置实心水滴尖端朝上（0° 基准），旋转使尖端指向目标方向：
-            // 横放 Up/Down → 0°/180°，竖放 Left/Right → -90°/90°
+            // 内置导航箭头基准图尖端朝上（0°），旋转到时间增长方向：
+            // 横放时间增长向右（+90°）、镜像后向左（270°）；竖放时间增长向下（180°）、镜像后向上（0°）
             PointerRotate.Angle = isHorizontal
-                ? (c.Pointer.HorizontalDirection == PointerDirection.Up ? 0 : 180)
-                : (c.Pointer.VerticalDirection == PointerDirection.Left ? -90 : 90);
+                ? (c.Mirrored ? 270 : 90)
+                : (c.Mirrored ? 0 : 180);
         }
         else
         {
@@ -310,16 +344,12 @@ public partial class BarWindow : Window
         var c = Config;
         NoteText.Foreground = FreezeBrush(c.TextStyle.Color);
         NoteText.FontSize = c.TextStyle.FontSize;
+        NoteText.FontWeight = c.TextStyle.Bold ? FontWeights.Bold : FontWeights.Normal;
 
         // 文字边框 = 紧贴字形的描边（非矩形框）；关闭时描边宽度为 0
         var border = c.TextStyle.Border;
         NoteText.Stroke = border.Enabled ? FreezeBrush(border.Color) : Brushes.Transparent;
         NoteText.StrokeThickness = border.Enabled ? border.Width : 0;
-
-        // 排列方向：竖排 = 顺时针旋转 90°（自上而下阅读）
-        NoteText.LayoutTransform = c.TextStyle.Arrangement == TextArrangement.Vertical
-            ? new RotateTransform(90)
-            : null;
     }
 
     /// <summary>
@@ -459,7 +489,7 @@ public partial class BarWindow : Window
             return;
         }
 
-        NoteText.Text = note.Text;
+        NoteText.Text = BuildDisplayText(note.Text, Config.TextStyle.Arrangement);
         NoteContainer.Visibility = Visibility.Visible;
         PositionNoteContainer();
         _bar.UpdateActive(note, ComputePointerRectInBar());
@@ -667,8 +697,20 @@ public partial class BarWindow : Window
         return brush;
     }
 
-    /// <summary>文字容器（含边框）预留带高估算：随字体大小变化。</summary>
-    private static double TextBandHeight(TextStyleConfig ts) => ts.FontSize * 1.5 + 8.0;
+    /// <summary>文字带预留宽 / 高估算：横排宽度随文本长度、高度固定；竖排高度随文本长度、宽度固定。</summary>
+    private static (double Width, double Height) MeasureTextBand(TextStyleConfig ts, int maxNoteLen)
+    {
+        var chars = Math.Max(1, maxNoteLen);
+        return ts.Arrangement == TextArrangement.Vertical
+            ? (ts.FontSize * 1.6 + 8.0, ts.FontSize * chars * 1.25 + 8.0)
+            : (ts.FontSize * chars + 8.0, ts.FontSize * 1.6 + 8.0);
+    }
+
+    /// <summary>按排列方向生成显示文本：竖排 = 字符自上而下逐字堆叠（字形保持直立，无需扭头阅读）。</summary>
+    private static string BuildDisplayText(string? text, TextArrangement arrangement)
+        => arrangement == TextArrangement.Vertical && !string.IsNullOrEmpty(text)
+            ? string.Join("\n", text.ToCharArray())
+            : text ?? "";
 
     private static Win32WindowHelper.MonitorInfo FindMonitor(string? deviceName)
     {

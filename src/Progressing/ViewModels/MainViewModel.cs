@@ -27,10 +27,10 @@ public partial class MainViewModel : ObservableObject
     /// <summary>当前选中的实例页（全局页被选中时为 null）。</summary>
     public InstanceViewModel? SelectedInstance => SelectedTab as InstanceViewModel;
 
-    public MainViewModel(InstanceManager manager, AppConfig config)
+    public MainViewModel(InstanceManager manager, ConfigService configService)
     {
         _manager = manager;
-        Global = new GlobalViewModel(config);
+        Global = new GlobalViewModel(configService);
         Tabs.Add(Global);
 
         foreach (var window in manager.Windows)
@@ -89,11 +89,10 @@ public partial class MainViewModel : ObservableObject
         if (_manager.Windows.Count >= InstanceManager.MaxInstances)
             return;
 
+        // Create 内部触发 InstancesChanged → OnInstancesChanged 已添加标签并选中，无需重复添加
         var window = _manager.Create();
-        var vm = CreateInstanceVm(window);
-        Tabs.Add(vm);
-        SelectedTab = vm;
-        vm.IsRenaming = true;
+        if (Tabs.OfType<InstanceViewModel>().FirstOrDefault(v => ReferenceEquals(v.Window, window)) is { } vm)
+            vm.IsRenaming = true;
         DeleteInstanceCommand.NotifyCanExecuteChanged();
     }
 
@@ -104,10 +103,8 @@ public partial class MainViewModel : ObservableObject
         if (vm is null)
             return;
 
-        var window = _manager.Clone(vm.Window);
-        var clone = CreateInstanceVm(window);
-        Tabs.Add(clone);
-        SelectedTab = clone;
+        // Clone 内部触发 InstancesChanged → OnInstancesChanged 已添加标签并选中，无需重复添加
+        _manager.Clone(vm.Window);
         DeleteInstanceCommand.NotifyCanExecuteChanged();
     }
 

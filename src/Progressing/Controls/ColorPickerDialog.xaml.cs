@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using Progressing.Core;
@@ -69,6 +70,26 @@ public partial class ColorPickerDialog : Window
             Owner = owner,
         };
         return dialog.ShowDialog() == true ? dialog.SelectedColor : null;
+    }
+
+    /// <summary>拖拽标题栏移动窗口（无边框窗口的手动拖动支持）。</summary>
+    private void DragStrip_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || IsOnInteractiveElement(e.OriginalSource))
+            return;
+        DragMove();
+    }
+
+    /// <summary>原点击目标是否位于可交互控件上（按钮 / 输入框等），是则不触发窗口拖动。</summary>
+    private static bool IsOnInteractiveElement(object source)
+    {
+        for (var d = source as DependencyObject; d is not null; d = VisualTreeHelper.GetParent(d))
+        {
+            if (d is ButtonBase or TextBoxBase)
+                return true;
+        }
+
+        return false;
     }
 
     private void Select(string hex)

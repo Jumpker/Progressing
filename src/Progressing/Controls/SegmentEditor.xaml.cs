@@ -7,8 +7,9 @@ using Progressing.Models;
 namespace Progressing.Controls;
 
 /// <summary>
-/// 备注表单行（产品设计书 §3.3.5）：起止时间 / 文案 / 颜色 / 上移 / 下移 / 删除。
-/// 直接编辑一个 SegmentNote；任何变更通过 Changed 事件通知上层做重叠校验与落盘。
+/// 备注表单行（产品设计书 §3.3.5）：起止时间 / 文案 / 颜色 / 删除。
+/// 直接编辑一个 SegmentNote；任何变更通过 Changed 事件通知上层做重叠校验与落盘，
+/// 起止时间提交（失焦）后通过 SortRequested 请求按时间自动排序。
 /// </summary>
 public partial class SegmentEditor : UserControl
 {
@@ -18,10 +19,8 @@ public partial class SegmentEditor : UserControl
     /// <summary>请求删除本行。</summary>
     public event EventHandler? DeleteRequested;
 
-    /// <summary>请求上移 / 下移。</summary>
-    public event EventHandler? MoveUpRequested;
-
-    public event EventHandler? MoveDownRequested;
+    /// <summary>请求按开始时间自动排序（时间输入提交后触发）。</summary>
+    public event EventHandler? SortRequested;
 
     /// <summary>正在编辑的备注。</summary>
     public SegmentNote Note { get; private set; } = new();
@@ -41,6 +40,10 @@ public partial class SegmentEditor : UserControl
     {
         InitializeComponent();
         ColorButton.Background = new SolidColorBrush(Colors.Gray);
+
+        // 起止时间"提交"（失焦补全）后请求自动排序
+        StartBox.Committed += (_, _) => SortRequested?.Invoke(this, EventArgs.Empty);
+        EndBox.Committed += (_, _) => SortRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>绑定备注并刷新控件。</summary>
@@ -111,10 +114,6 @@ public partial class SegmentEditor : UserControl
         ApplyColor(picked.Value);
         RaiseChanged();
     }
-
-    private void MoveUp_Click(object sender, RoutedEventArgs e) => MoveUpRequested?.Invoke(this, EventArgs.Empty);
-
-    private void MoveDown_Click(object sender, RoutedEventArgs e) => MoveDownRequested?.Invoke(this, EventArgs.Empty);
 
     private void Delete_Click(object sender, RoutedEventArgs e) => DeleteRequested?.Invoke(this, EventArgs.Empty);
 

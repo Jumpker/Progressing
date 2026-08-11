@@ -7,6 +7,9 @@ public class AppConfig
 {
     public int Version { get; set; } = 1;
 
+    /// <summary>界面主题模式（跟随系统 / 浅色 / 深色），默认浅色。</summary>
+    public AppTheme Theme { get; set; } = AppTheme.Light;
+
     /// <summary>开机自启（注册表 Run 键）。</summary>
     public bool AutoStart { get; set; }
 
@@ -20,6 +23,7 @@ public class AppConfig
     public AppConfig Clone() => new()
     {
         Version = Version,
+        Theme = Theme,
         AutoStart = AutoStart,
         RecentColors = new List<string>(RecentColors),
         Instances = Instances.Select(i => i.Clone()).ToList(),

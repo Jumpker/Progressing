@@ -3,35 +3,36 @@ using System.Windows.Media;
 namespace Progressing.Core;
 
 /// <summary>
-/// 全局配色常量：进度条灰底、文字 / 指针 / 标注默认色、内置 10 色柔和色池（产品设计书 §5）。
+/// 全局配色常量：进度条灰底、文字 / 指针 / 标注默认色、内置 10 色鲜明色池（产品设计书 §5）。
+/// 桌面进度条配色与 Resources/Theme.xaml 的 UI 令牌保持同族（现代蓝 #1677FF）。
 /// </summary>
 public static class Palettes
 {
-    /// <summary>进度条默认灰底（暖灰）。</summary>
-    public static readonly Color Track = FromHex("#E3E0DB");
+    /// <summary>进度条默认灰底（中性冷灰，衬托彩色段）。</summary>
+    public static readonly Color Track = FromHex("#DEE1E7");
 
-    /// <summary>备注文字 / 指针 / 时间标注默认色（石板灰）。</summary>
-    public static readonly Color Ink = FromHex("#5A5A5A");
+    /// <summary>备注文字 / 指针 / 时间标注默认色（中性石板灰）。</summary>
+    public static readonly Color Ink = FromHex("#4E5969");
 
     /// <summary>时间标注中性灰。</summary>
-    public static readonly Color LabelGray = FromHex("#8A8A8A");
+    public static readonly Color LabelGray = FromHex("#86909C");
 
-    /// <summary>编辑模式高亮轮廓色。</summary>
-    public static readonly Color EditHighlight = FromHex("#4A90D9");
+    /// <summary>编辑模式高亮轮廓色（品牌现代蓝）。</summary>
+    public static readonly Color EditHighlight = FromHex("#1677FF");
 
-    /// <summary>内置色池（10 色，低饱和中高明度马卡龙色系）。</summary>
+    /// <summary>内置色池（10 色，鲜明多色系：珊瑚红 → 玫红，按色相环分布）。</summary>
     public static readonly IReadOnlyList<Color> Pool =
     [
-        FromHex("#F7C9BE"), // 蜜桃粉
-        FromHex("#E3C4C4"), // 玫瑰粉
-        FromHex("#F5C29E"), // 杏橙
-        FromHex("#FBF0C2"), // 奶油黄
-        FromHex("#C9EDE1"), // 薄荷绿
-        FromHex("#B9C7A0"), // 鼠尾草绿
-        FromHex("#CFE7F5"), // 天蓝
-        FromHex("#A9D3EA"), // 雾蓝
-        FromHex("#D9CBF2"), // 薰衣草
-        FromHex("#C4B3E0"), // 丁香紫
+        FromHex("#F06B5A"), // 珊瑚红
+        FromHex("#F59A3C"), // 蜜橙
+        FromHex("#E0A800"), // 金盏黄
+        FromHex("#6BC047"), // 青柠绿
+        FromHex("#2FB578"), // 翠绿
+        FromHex("#21B5B5"), // 湖青
+        FromHex("#38A0F0"), // 天蓝
+        FromHex("#5B6DF0"), // 靛蓝
+        FromHex("#8B6FE8"), // 紫罗兰
+        FromHex("#E25A9C"), // 玫红
     ];
 
     public static Color FromHex(string hex)

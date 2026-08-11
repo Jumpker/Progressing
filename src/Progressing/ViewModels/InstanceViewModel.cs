@@ -73,13 +73,13 @@ public partial class InstanceViewModel : TabViewModel
     public double Length
     {
         get => Config.Length;
-        set { Config.Length = Clamp(value, 200, 2000); OnPropertyChanged(); Save(); }
+        set { Config.Length = Clamp(value, 200, BarConfig.MaxLength); OnPropertyChanged(); Save(); }
     }
 
     public double Width
     {
         get => Config.Width;
-        set { Config.Width = Clamp(value, 2, 10); OnPropertyChanged(); Save(); }
+        set { Config.Width = Clamp(value, 2, 15); OnPropertyChanged(); Save(); }
     }
 
     public int Opacity
@@ -148,32 +148,6 @@ public partial class InstanceViewModel : TabViewModel
         new LabeledValue<PointerSource>("自定义文件", PointerSource.File),
     };
 
-    public IReadOnlyList<LabeledValue<TextAnchor>> TextAnchorOptions { get; } = new[]
-    {
-        new LabeledValue<TextAnchor>("上方", TextAnchor.Top),
-        new LabeledValue<TextAnchor>("下方", TextAnchor.Bottom),
-        new LabeledValue<TextAnchor>("左侧", TextAnchor.Left),
-        new LabeledValue<TextAnchor>("右侧", TextAnchor.Right),
-    };
-
-    public IReadOnlyList<LabeledValue<TextArrangement>> TextArrangementOptions { get; } = new[]
-    {
-        new LabeledValue<TextArrangement>("横排", TextArrangement.Horizontal),
-        new LabeledValue<TextArrangement>("竖排", TextArrangement.Vertical),
-    };
-
-    public IReadOnlyList<LabeledValue<PointerDirection>> HorizontalDirectionOptions { get; } = new[]
-    {
-        new LabeledValue<PointerDirection>("向上", PointerDirection.Up),
-        new LabeledValue<PointerDirection>("向下", PointerDirection.Down),
-    };
-
-    public IReadOnlyList<LabeledValue<PointerDirection>> VerticalDirectionOptions { get; } = new[]
-    {
-        new LabeledValue<PointerDirection>("向左", PointerDirection.Left),
-        new LabeledValue<PointerDirection>("向右", PointerDirection.Right),
-    };
-
     partial void OnSelectedPresetChanged(PlacementPresetItem? value)
     {
         if (value is null)
@@ -194,12 +168,19 @@ public partial class InstanceViewModel : TabViewModel
 
         Config.TextStyle.Anchor = value.Value;
         Config.TextOffset = new Point2D(); // 取消手动拖拽偏移，回到预设基准位置
-        OnPropertyChanged(nameof(TextAnchor)); // 与文字样式分区的"基准方向"联动
         Save();
         SelectedTextPreset = null; // 一次性：应用即复位
     }
 
     public bool IsEditMode => Window.IsEditMode;
+
+    /// <summary>把进度条长度铺满所在屏幕工作区（横放 = 屏幕宽度、竖放 = 屏幕高度），并贴到屏幕边缘。</summary>
+    public void FillScreen()
+    {
+        Window.FillScreen();
+        OnPropertyChanged(nameof(Length));
+        Save();
+    }
 
     /// <summary>以进度条几何中心为原点顺时针旋转 90°（横放 ↔ 竖放），并刷新依赖方向的 UI。</summary>
     public void Rotate()
@@ -207,6 +188,14 @@ public partial class InstanceViewModel : TabViewModel
         Window.RotateClockwise();
         OnPropertyChanged(nameof(Orientation));
         Save();
+    }
+
+    /// <summary>切换方向到目标值（横向 / 竖向）：保持几何中心不动，走完整旋转管线。</summary>
+    public void SetOrientation(BarOrientation target)
+    {
+        if (Config.Orientation == target)
+            return;
+        Rotate();
     }
 
     [RelayCommand]
@@ -238,24 +227,18 @@ public partial class InstanceViewModel : TabViewModel
         set { Config.Pointer.Size = Clamp(value, 8, 64); OnPropertyChanged(); Save(); }
     }
 
-    public PointerDirection HorizontalDirection
-    {
-        get => Config.Pointer.HorizontalDirection;
-        set { if (Config.Pointer.HorizontalDirection != value) { Config.Pointer.HorizontalDirection = value; OnPropertyChanged(); Save(); } }
-    }
-
-    public PointerDirection VerticalDirection
-    {
-        get => Config.Pointer.VerticalDirection;
-        set { if (Config.Pointer.VerticalDirection != value) { Config.Pointer.VerticalDirection = value; OnPropertyChanged(); Save(); } }
-    }
-
     // ---------------- 时间段备注 ----------------
 
     public ObservableCollection<SegmentNote> Notes { get; } = new();
 
     private void RefreshNotes()
     {
+        // 按开始时间排序（时间早的在上；同时间按结束时间），界面 / 底层顺序保持一致
+        Config.Notes = Config.Notes
+            .OrderBy(n => n.StartTime)
+            .ThenBy(n => n.EndTime)
+            .ToList();
+
         Notes.Clear();
         foreach (var note in Config.Notes)
             Notes.Add(note);
@@ -294,15 +277,43 @@ public partial class InstanceViewModel : TabViewModel
         Save();
     }
 
-    /// <summary>上移 / 下移备注（delta = -1 / +1）。</summary>
-    public void MoveNote(SegmentNote note, int delta)
+    /// <summary>
+    /// 按开始时间自动排序（时间早的在上；相同开始时间按结束时间，保持相对稳定）。
+    /// 仅在顺序确实变化时执行，并用 ObservableCollection.Move 最小化重建容器（保留编辑焦点）。
+    /// </summary>
+    public void SortNotes()
     {
-        var i = Config.Notes.IndexOf(note);
-        var j = i + delta;
-        if (i < 0 || j < 0 || j >= Config.Notes.Count)
+        var sorted = Config.Notes
+            .OrderBy(n => n.StartTime)
+            .ThenBy(n => n.EndTime)
+            .ToList();
+        if (sorted.Count <= 1)
             return;
-        (Config.Notes[i], Config.Notes[j]) = (Config.Notes[j], Config.Notes[i]);
-        Notes.Move(i, j);
+
+        var orderChanged = false;
+        for (var i = 0; i < sorted.Count; i++)
+        {
+            if (!ReferenceEquals(sorted[i], Config.Notes[i]))
+            {
+                orderChanged = true;
+                break;
+            }
+        }
+
+        if (!orderChanged)
+            return;
+
+        // 同步底层列表（渲染 / 冲突校验顺序一致）
+        Config.Notes = sorted;
+
+        // 最小化移动：不重建全部容器，避免编辑焦点丢失
+        for (var i = 0; i < sorted.Count; i++)
+        {
+            if (ReferenceEquals(Notes[i], sorted[i]))
+                continue;
+            Notes.Move(Notes.IndexOf(sorted[i]), i);
+        }
+
         Save();
     }
 
@@ -316,12 +327,6 @@ public partial class InstanceViewModel : TabViewModel
     }
 
     // ---------------- 备注文字样式 ----------------
-
-    public TextAnchor TextAnchor
-    {
-        get => Config.TextStyle.Anchor;
-        set { if (Config.TextStyle.Anchor != value) { Config.TextStyle.Anchor = value; OnPropertyChanged(); Save(); } }
-    }
 
     public TextArrangement TextArrangement
     {
@@ -343,6 +348,12 @@ public partial class InstanceViewModel : TabViewModel
         }
     }
 
+    public bool TextBold
+    {
+        get => Config.TextStyle.Bold;
+        set { if (Config.TextStyle.Bold != value) { Config.TextStyle.Bold = value; OnPropertyChanged(); Save(); } }
+    }
+
     public string TextColor
     {
         get => Config.TextStyle.Color;
@@ -353,6 +364,21 @@ public partial class InstanceViewModel : TabViewModel
     {
         get => Config.TextStyle.Border.Enabled;
         set { if (Config.TextStyle.Border.Enabled != value) { Config.TextStyle.Border.Enabled = value; OnPropertyChanged(); Save(); } }
+    }
+
+    /// <summary>文字描边粗细（DIP，0.5 ~ 4）。</summary>
+    public double TextBorderWidth
+    {
+        get => Config.TextStyle.Border.Width;
+        set
+        {
+            var v = Clamp(value, 0.5, 4);
+            if (Math.Abs(Config.TextStyle.Border.Width - v) < 0.001)
+                return;
+            Config.TextStyle.Border.Width = v;
+            OnPropertyChanged();
+            Save();
+        }
     }
 
     public string TextBorderColor

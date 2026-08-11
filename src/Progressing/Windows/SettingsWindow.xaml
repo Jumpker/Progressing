@@ -4,24 +4,31 @@
         xmlns:vm="clr-namespace:Progressing.ViewModels"
         xmlns:controls="clr-namespace:Progressing.Controls"
         Title="Progressing 设置" Width="960" Height="640" MinWidth="820" MinHeight="520"
-        WindowStartupLocation="CenterScreen" Background="#F7F6F3">
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource WindowBgBrush}">
     <Window.Resources>
         <!-- 隐藏转换 -->
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <vm:InverseBoolConverter x:Key="InvBool" />
         <vm:HexToBrushConverter x:Key="HexToBrush" />
+
+        <!-- 标签右键菜单：放窗口资源而非 Style Setter 内联，避免 WPF connectionId 冲突崩溃 -->
+        <ContextMenu x:Key="TabItemContextMenu">
+            <MenuItem Header="重命名" Click="TabRename_Click" />
+            <MenuItem Header="复制" Click="TabClone_Click" />
+            <MenuItem Header="删除" Click="TabDelete_Click" />
+        </ContextMenu>
     </Window.Resources>
 
-    <Grid>
+    <Grid TextElement.Foreground="{DynamicResource TextPrimaryBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- ===================== 标签栏 ===================== -->
-        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D8D5CC" BorderThickness="0,0,0,1" Padding="10,8">
+        <Border Grid.Row="0" Background="{DynamicResource PanelBgBrush}" BorderBrush="{DynamicResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="10,8">
             <DockPanel>
-                <Button DockPanel.Dock="Right" Content="＋" Width="30" Height="26" Margin="6,0,0,0"
+                <Button DockPanel.Dock="Right" Content="＋" Width="30" Height="26" Padding="0,0" Margin="6,0,0,0"
                         ToolTip="新建进度条" Click="AddInstance_Click" />
                 <ListBox x:Name="TabsHost" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
                          Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto"
@@ -33,36 +40,35 @@
                     </ListBox.ItemsPanel>
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
-                            <Setter Property="Padding" Value="12,5" />
+                            <Setter Property="Padding" Value="12,7" />
                             <Setter Property="Margin" Value="0,0,6,0" />
                             <Setter Property="BorderThickness" Value="0,0,0,2" />
                             <Setter Property="BorderBrush" Value="Transparent" />
                             <Setter Property="FontSize" Value="13" />
-                            <Setter Property="Foreground" Value="#5A5A5A" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
                             <Setter Property="Cursor" Value="Hand" />
-                            <Setter Property="ContextMenu">
+                            <Setter Property="ContextMenu" Value="{StaticResource TabItemContextMenu}" />
+                            <Setter Property="Template">
                                 <Setter.Value>
-                                    <ContextMenu>
-                                        <MenuItem Header="重命名"
-                                                  Command="{Binding PlacementTarget.DataContext.RenameInstanceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                  CommandParameter="{Binding}" />
-                                        <MenuItem Header="复制"
-                                                  Command="{Binding PlacementTarget.DataContext.CloneInstanceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                  CommandParameter="{Binding}" />
-                                        <MenuItem Header="删除"
-                                                  Command="{Binding PlacementTarget.DataContext.DeleteInstanceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                  CommandParameter="{Binding}" />
-                                    </ContextMenu>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="6"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter />
+                                        </Border>
+                                    </ControlTemplate>
                                 </Setter.Value>
                             </Setter>
                             <Style.Triggers>
-                                <Trigger Property="IsSelected" Value="True">
-                                    <Setter Property="BorderBrush" Value="#4A90D9" />
-                                    <Setter Property="Foreground" Value="#1F4E79" />
-                                    <Setter Property="FontWeight" Value="SemiBold" />
-                                </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#F1EFEA" />
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
                                 </Trigger>
                                 <!-- 全局标签页无右键菜单 -->
                                 <DataTrigger Binding="{Binding IsGlobal}" Value="True">
@@ -76,7 +82,7 @@
                             <Grid>
                                 <TextBlock Text="{Binding Header}" VerticalAlignment="Center"
                                            Visibility="{Binding IsRenaming, Converter={StaticResource InvBool}}" />
-                                <TextBox x:Name="RenameBox" Text="{Binding RenameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="120"
+                                <TextBox Text="{Binding RenameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="120"
                                          Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVis}}"
                                          KeyDown="RenameBox_KeyDown" LostFocus="RenameBox_LostFocus" />
                             </Grid>
@@ -96,19 +102,169 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="全局设置" FontSize="18" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,18" />
+                        <TextBlock Grid.Row="0" Text="全局设置" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,18" />
 
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,14">
-                            <TextBlock Text="开机自启" Width="120" VerticalAlignment="Center" Foreground="#333" />
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,18">
+                            <TextBlock Text="开机自启" Width="120" VerticalAlignment="Center" />
                             <CheckBox IsChecked="{Binding AutoStart}" VerticalAlignment="Center" ToolTip="登录 Windows 后自动启动 Progressing" />
-                            <TextBlock Text="（写入注册表 HKCU Run）" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#8A8A8A" FontSize="12" />
+                            <TextBlock Text="（写入注册表 HKCU Run）" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextHintBrush}" FontSize="12" />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="2" Orientation="Horizontal">
-                            <TextBlock Text="版本" Width="120" VerticalAlignment="Center" Foreground="#333" />
-                            <TextBlock Text="{Binding Version}" VerticalAlignment="Center" Foreground="#5A5A5A" />
+                        <TextBlock Grid.Row="2" Text="主题模式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
+
+                        <!-- 主题模式预览卡片（浅色 / 深色 / 跟随系统） -->
+                        <ListBox Grid.Row="3" ItemsSource="{Binding ThemeOptions}"
+                                 SelectedValue="{Binding Theme}" SelectedValuePath="Value"
+                                 Background="Transparent" BorderThickness="0" Margin="0,0,0,22"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Margin" Value="0,0,12,0" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Cursor" Value="Hand" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Grid>
+                                                    <ContentPresenter />
+                                                    <!-- 选中角标勾 -->
+                                                    <Border x:Name="CheckBadge" Width="18" Height="18" CornerRadius="9"
+                                                            Background="{DynamicResource AccentBrush}"
+                                                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                            Margin="0,5,5,0" Visibility="Collapsed">
+                                                        <Path Data="M5,9.5 L8,12 L13,6" Stroke="White" StrokeThickness="2"
+                                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                                    </Border>
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="CheckBadge" Property="Visibility" Value="Visible" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <Border x:Name="Card" Width="96" Height="64" CornerRadius="8" Padding="5">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+                                                    <Setter Property="BorderThickness" Value="1.5" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                            <Setter Property="BorderThickness" Value="2" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid>
+                                                <!-- 预览图：迷你窗口（标题栏 + 内容条），按 Key 分支显示 -->
+
+                                                <!-- 浅色 -->
+                                                <Grid>
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Key}" Value="Light">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+                                                    <Border Background="#FFFFFF" CornerRadius="4" />
+                                                    <Border Height="12" Background="#F2F3F5" VerticalAlignment="Top" CornerRadius="4,4,0,0" />
+                                                    <Ellipse Width="3" Height="3" Fill="#D0D3D9" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="9,4.5,0,0" />
+                                                    <Ellipse Width="3" Height="3" Fill="#D0D3D9" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="15,4.5,0,0" />
+                                                    <Ellipse Width="3" Height="3" Fill="#D0D3D9" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="21,4.5,0,0" />
+                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,4,0,0">
+                                                        <Border Height="5" Width="46" Background="#E5E6EB" CornerRadius="2" />
+                                                        <Border Height="5" Width="22" Background="#1677FF" CornerRadius="2" HorizontalAlignment="Left" Margin="0,4,0,0" />
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <!-- 深色 -->
+                                                <Grid>
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Key}" Value="Dark">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+                                                    <Border Background="#1E2023" CornerRadius="4" />
+                                                    <Border Height="12" Background="#141517" VerticalAlignment="Top" CornerRadius="4,4,0,0" />
+                                                    <Ellipse Width="3" Height="3" Fill="#3A3F47" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="9,4.5,0,0" />
+                                                    <Ellipse Width="3" Height="3" Fill="#3A3F47" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="15,4.5,0,0" />
+                                                    <Ellipse Width="3" Height="3" Fill="#3A3F47" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="21,4.5,0,0" />
+                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,4,0,0">
+                                                        <Border Height="5" Width="46" Background="#2C2F36" CornerRadius="2" />
+                                                        <Border Height="5" Width="22" Background="#1677FF" CornerRadius="2" HorizontalAlignment="Left" Margin="0,4,0,0" />
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <!-- 跟随系统：左浅右深，中间分隔 -->
+                                                <Grid>
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Key}" Value="System">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="1" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Background="#FFFFFF" CornerRadius="4,0,0,4">
+                                                        <Grid>
+                                                            <Border Height="12" Background="#F2F3F5" VerticalAlignment="Top" />
+                                                            <Border Height="5" Width="30" Background="#1677FF" CornerRadius="2" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                                        </Grid>
+                                                    </Border>
+                                                    <Border Grid.Column="1" Background="#C9CDD4" />
+                                                    <Border Grid.Column="2" Background="#1E2023" CornerRadius="0,4,4,0">
+                                                        <Grid>
+                                                            <Border Height="12" Background="#141517" VerticalAlignment="Top" />
+                                                            <Border Height="5" Width="30" Background="#1677FF" CornerRadius="2" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                                        </Grid>
+                                                    </Border>
+                                                </Grid>
+                                            </Grid>
+                                        </Border>
+                                        <TextBlock Text="{Binding Name}" HorizontalAlignment="Center" FontSize="12"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <StackPanel Grid.Row="4" Orientation="Horizontal">
+                            <TextBlock Text="版本" Width="120" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Version}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </StackPanel>
                     </Grid>
                 </DataTemplate>
@@ -134,12 +290,27 @@
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="Padding" Value="12,8" />
                                     <Setter Property="Margin" Value="0,0,0,2" />
-                                    <Setter Property="Foreground" Value="#333" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
                                     <Setter Property="Cursor" Value="Hand" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        CornerRadius="6"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
                                     <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                        </Trigger>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#4A90D9" />
-                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="Background" Value="{DynamicResource AccentLightBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
                                         </Trigger>
                                     </Style.Triggers>
                                 </Style>
@@ -162,7 +333,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock Text="外观" FontSize="16" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,14" />
+                                    <TextBlock Text="外观" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,14" />
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="显示进度条" Width="120" VerticalAlignment="Center" />
                                         <CheckBox IsChecked="{Binding Visible}" VerticalAlignment="Center" />
@@ -174,17 +345,20 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="不透明度" Width="120" VerticalAlignment="Center" />
                                         <Slider Minimum="0" Maximum="100" Width="200" Value="{Binding Opacity}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding Opacity}" Width="40" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
+                                        <TextBlock Text="{Binding Opacity}" Width="40" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="长度" Width="120" VerticalAlignment="Center" />
-                                        <Slider Minimum="200" Maximum="2000" Width="200" Value="{Binding Length}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding Length, StringFormat={}{0:0}}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
+                                        <Slider Minimum="200" Maximum="4000" Width="200" Value="{Binding Length}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Length, StringFormat={}{0:0}}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <Button Content="铺满屏幕" Margin="8,0,0,0" Click="FillScreenLength_Click"
+                                                Style="{StaticResource PrimaryButtonStyle}"
+                                                ToolTip="把进度条长度设为当前屏幕的宽度（横放）或高度（竖放），并贴到屏幕边缘" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="宽度" Width="120" VerticalAlignment="Center" />
-                                        <Slider Minimum="2" Maximum="10" Width="200" Value="{Binding Width}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding Width, StringFormat={}{0:0}}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
+                                        <Slider Minimum="2" Maximum="15" Width="200" Value="{Binding Width}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Width, StringFormat={}{0:0}}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="边框" Width="120" VerticalAlignment="Center" />
@@ -207,30 +381,26 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock Text="位置" FontSize="16" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,14" />
+                                    <TextBlock Text="位置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,14" />
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="旋转" Width="120" VerticalAlignment="Center" />
-                                        <Button MinWidth="160" Padding="12,6" Click="Rotate_Click"
-                                                ToolTip="以进度条几何中心为原点顺时针旋转 90°（横放 ↔ 竖放）">
-                                            <Button.Style>
-                                                <Style TargetType="Button">
-                                                    <Setter Property="Content" Value="旋转 90°（当前横放）" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Orientation}" Value="Vertical">
-                                                            <Setter Property="Content" Value="旋转 90°（当前竖放）" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
+                                        <TextBlock Text="方向" Width="120" VerticalAlignment="Center" />
+                                        <Border CornerRadius="7" Background="{DynamicResource HoverBrush}" Padding="2"
+                                                ToolTip="切换进度条的横放 / 竖放（保持几何中心不动）">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Content="横向" Click="SetHorizontal_Click"
+                                                        Style="{StaticResource SegmentedHorizontalStyle}" />
+                                                <Button Content="竖向" Click="SetVertical_Click"
+                                                        Style="{StaticResource SegmentedVerticalStyle}" />
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="水平翻转" Width="120" VerticalAlignment="Center" />
+                                        <TextBlock Text="翻转" Width="120" VerticalAlignment="Center" />
                                         <CheckBox IsChecked="{Binding Mirrored}" VerticalAlignment="Center" ToolTip="以进度条中心为对称轴翻转时间映射" />
                                     </StackPanel>
                                     <Separator Margin="0,6,0,12" />
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="进度条定位预设" Width="120" VerticalAlignment="Center" />
+                                        <TextBlock Text="进度条定位" Width="120" VerticalAlignment="Center" />
                                         <ComboBox Width="140" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
                                                   DisplayMemberPath="Label" VerticalAlignment="Center" ToolTip="选择后立即把进度条定位到屏幕对应位置并复位（一次性）" />
                                         <TextBlock Text="显示器" Width="60" Margin="12,0,0,0" VerticalAlignment="Center" />
@@ -238,17 +408,17 @@
                                                   VerticalAlignment="Center" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="文字定位预设" Width="120" VerticalAlignment="Center" />
+                                        <TextBlock Text="文字定位" Width="120" VerticalAlignment="Center" />
                                         <ComboBox Width="140" ItemsSource="{Binding TextPositionPresets}" SelectedItem="{Binding SelectedTextPreset}"
                                                   DisplayMemberPath="Label" VerticalAlignment="Center"
-                                                  ToolTip="选择后立即把备注文字定位到进度条对应一侧并复位（一次性；横放竖放均适用）" />
+                                                  ToolTip="选择后立即把备注文字定位到进度条对应一侧并复位（一次性）" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="拖动更改位置" Width="120" VerticalAlignment="Center" />
-                                        <Button MinWidth="160" Padding="12,6" Click="EditMode_Click">
+                                        <Button MinWidth="160" Click="EditMode_Click">
                                             <Button.Style>
-                                                <Style TargetType="Button">
-                                                    <Setter Property="Content" Value="进入位置编辑模式" />
+                                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                                    <Setter Property="Content" Value="🖱️进入位置编辑" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsEditMode}" Value="True">
                                                             <Setter Property="Content" Value="完成" />
@@ -272,7 +442,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock Text="指针" FontSize="16" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,14" />
+                                    <TextBlock Text="指针" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,14" />
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="图标来源" Width="120" VerticalAlignment="Center" />
                                         <ComboBox Width="120" ItemsSource="{Binding PointerSourceOptions}"
@@ -287,19 +457,7 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="大小" Width="120" VerticalAlignment="Center" />
                                         <Slider Minimum="8" Maximum="64" Width="200" Value="{Binding PointerSize}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding PointerSize, StringFormat={}{0:0}px}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="横放指向" Width="120" VerticalAlignment="Center" />
-                                        <ComboBox Width="120" ItemsSource="{Binding HorizontalDirectionOptions}"
-                                                  SelectedValue="{Binding HorizontalDirection}" SelectedValuePath="Value"
-                                                  DisplayMemberPath="Label" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="竖放指向" Width="120" VerticalAlignment="Center" />
-                                        <ComboBox Width="120" ItemsSource="{Binding VerticalDirectionOptions}"
-                                                  SelectedValue="{Binding VerticalDirection}" SelectedValuePath="Value"
-                                                  DisplayMemberPath="Label" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding PointerSize, StringFormat={}{0:0}px}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
                                     </StackPanel>
                                 </StackPanel>
 
@@ -315,9 +473,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock Text="时间段备注" FontSize="16" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,4" />
-                                    <TextBlock Text="同一条进度条内时间段不允许重叠（首尾相接允许）。删除备注后其随机颜色回归未使用池。" 
-                                               Foreground="#8A8A8A" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                    <TextBlock Text="时间段" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
                                     <ItemsControl x:Name="NotesList" ItemsSource="{Binding Notes}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -325,7 +481,8 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <Button Content="＋ 添加时间段" Width="140" Height="30" Margin="0,10,0,0" Click="AddNote_Click" />
+                                    <Button Content="＋ 添加时间段" Width="140" Height="30" Margin="0,10,0,0"
+                                            Style="{StaticResource PrimaryButtonStyle}" Click="AddNote_Click" />
                                 </StackPanel>
 
                                 <!-- ===== 文字样式 ===== -->
@@ -340,23 +497,32 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock Text="备注文字样式" FontSize="16" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,14" />
+                                    <TextBlock Text="文字样式" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,14" />
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="基准方向" Width="120" VerticalAlignment="Center" />
-                                        <ComboBox Width="120" ItemsSource="{Binding TextAnchorOptions}"
-                                                  SelectedValue="{Binding TextAnchor}" SelectedValuePath="Value"
-                                                  DisplayMemberPath="Label" VerticalAlignment="Center" />
+                                        <TextBlock Text="文字定位" Width="120" VerticalAlignment="Center" />
+                                        <ComboBox Width="140" ItemsSource="{Binding TextPositionPresets}" SelectedItem="{Binding SelectedTextPreset}"
+                                                  DisplayMemberPath="Label" VerticalAlignment="Center"
+                                                  ToolTip="选择后立即把文字定位到进度条一侧并复位（一次性）" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="排列方向" Width="120" VerticalAlignment="Center" />
-                                        <ComboBox Width="120" ItemsSource="{Binding TextArrangementOptions}"
-                                                  SelectedValue="{Binding TextArrangement}" SelectedValuePath="Value"
-                                                  DisplayMemberPath="Label" VerticalAlignment="Center" />
+                                        <Border CornerRadius="7" Background="{DynamicResource HoverBrush}" Padding="2">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Content="横排" Click="SetArrangementHorizontal_Click"
+                                                        Style="{StaticResource SegmentedHorizontalArrangementStyle}" />
+                                                <Button Content="竖排" Click="SetArrangementVertical_Click"
+                                                        Style="{StaticResource SegmentedVerticalArrangementStyle}" />
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="文字大小" Width="120" VerticalAlignment="Center" />
                                         <Slider Minimum="8" Maximum="72" Width="200" Value="{Binding TextFontSize}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding TextFontSize, StringFormat={}{0:0}}" Width="40" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
+                                        <TextBlock Text="{Binding TextFontSize, StringFormat={}{0:0}}" Width="40" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <TextBlock Text="文字加粗" Width="120" VerticalAlignment="Center" />
+                                        <CheckBox IsChecked="{Binding TextBold}" VerticalAlignment="Center" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="文字颜色" Width="120" VerticalAlignment="Center" />
@@ -366,8 +532,15 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="文字边框" Width="120" VerticalAlignment="Center" />
                                         <CheckBox IsChecked="{Binding TextBorderEnabled}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                        <Button Width="28" Height="20" Click="TextBorderColor_Click"
-                                                Background="{Binding TextBorderColor, Converter={StaticResource HexToBrush}}" />
+                                        <Slider Minimum="0.5" Maximum="4" TickFrequency="0.5" IsSnapToTickEnabled="True" Width="120"
+                                                Value="{Binding TextBorderWidth}" VerticalAlignment="Center"
+                                                IsEnabled="{Binding TextBorderEnabled}" ToolTip="文字描边粗细（0.5 ~ 4）" />
+                                        <TextBlock Text="{Binding TextBorderWidth, StringFormat={}{0:0.#}}" Width="30" Margin="8,0,0,0"
+                                                   VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <Button Width="28" Height="20" Margin="12,0,0,0" Click="TextBorderColor_Click"
+                                                IsEnabled="{Binding TextBorderEnabled}"
+                                                Background="{Binding TextBorderColor, Converter={StaticResource HexToBrush}}"
+                                                ToolTip="文字边框颜色" />
                                     </StackPanel>
                                 </StackPanel>
 
@@ -383,7 +556,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock Text="其它" FontSize="16" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,14" />
+                                    <TextBlock Text="其它" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,14" />
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="配置" Width="120" VerticalAlignment="Center" />
                                         <Button Content="恢复默认配置" Padding="12,6" Click="ResetDefaults_Click"

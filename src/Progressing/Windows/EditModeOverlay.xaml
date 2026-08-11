@@ -1,10 +1,10 @@
 <UserControl x:Class="Progressing.Windows.EditModeOverlay"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             ToolTip="拖动调整备注文字位置">
+             ToolTip="拖动调整文字位置">
     <Border Width="18" Height="18"
-            Background="#804A90D9"
-            BorderBrush="#CC4A90D9" BorderThickness="1"
+            Background="#591677FF"
+            BorderBrush="#991677FF" BorderThickness="1"
             CornerRadius="4"
             Cursor="SizeAll">
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">

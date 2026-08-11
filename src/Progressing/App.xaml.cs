@@ -1,6 +1,8 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using Microsoft.Win32;
+using Progressing.Models;
 using Progressing.Services;
 using Progressing.ViewModels;
 using Progressing.Windows;
@@ -54,11 +56,13 @@ public partial class App : Application
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         _config = new ConfigService();
+        ThemeService.Apply(_config.Config.Theme); // 启动即按配置应用主题（跟随系统 / 浅色 / 深色）
+
         var timeService = new TimeService();
         _manager = new InstanceManager(_config, timeService);
         _manager.Initialize();
 
-        _mainVm = new MainViewModel(_manager, _config.Config);
+        _mainVm = new MainViewModel(_manager, _config);
 
         _tray = new TrayService();
         _tray.OpenSettingsRequested += ShowSettings;
@@ -67,6 +71,23 @@ public partial class App : Application
 
         if (_config.FirstRun)
             _tray.ShowFirstRunBalloon();
+
+        // 监听系统深浅色变化："跟随系统"模式下实时同步
+        SystemEvents.UserPreferenceChanged += OnSystemThemeChanged;
+    }
+
+    /// <summary>系统主题外观变化（深/浅色切换）时，跟随系统模式下即时换肤。</summary>
+    private void OnSystemThemeChanged(object? sender, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category != UserPreferenceCategory.General)
+            return;
+
+        // 事件在系统线程触发，切回 UI 线程再应用
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_config?.Config.Theme == AppTheme.System)
+                ThemeService.Apply(AppTheme.System);
+        });
     }
 
     private static void LogError(string tag, Exception? ex)
@@ -106,6 +127,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        SystemEvents.UserPreferenceChanged -= OnSystemThemeChanged;
         _config?.SaveNow();
         _tray?.Dispose();
         base.OnExit(e);

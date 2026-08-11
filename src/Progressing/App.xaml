@@ -4,6 +4,8 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- 颜色令牌在前（浅色默认），模板在后；运行时 ThemeService 整字典替换 Colors.* -->
+                <ResourceDictionary Source="Resources/Colors.Light.xaml" />
                 <ResourceDictionary Source="Resources/Theme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
