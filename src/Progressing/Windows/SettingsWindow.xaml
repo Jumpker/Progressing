@@ -177,6 +177,16 @@
                                         <TextBlock Text="{Binding Opacity}" Width="40" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <TextBlock Text="长度" Width="120" VerticalAlignment="Center" />
+                                        <Slider Minimum="200" Maximum="2000" Width="200" Value="{Binding Length}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Length, StringFormat={}{0:0}}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <TextBlock Text="宽度" Width="120" VerticalAlignment="Center" />
+                                        <Slider Minimum="2" Maximum="10" Width="200" Value="{Binding Width}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Width, StringFormat={}{0:0}}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="边框" Width="120" VerticalAlignment="Center" />
                                         <CheckBox IsChecked="{Binding BorderEnabled}" VerticalAlignment="Center" Margin="0,0,12,0" />
                                         <Button Width="28" Height="20" Click="BorderColor_Click"
@@ -199,33 +209,39 @@
                                     </StackPanel.Style>
                                     <TextBlock Text="位置" FontSize="16" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,14" />
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="方向" Width="120" VerticalAlignment="Center" />
-                                        <ComboBox Width="120" ItemsSource="{Binding OrientationOptions}"
-                                                  SelectedValue="{Binding Orientation}" SelectedValuePath="Value"
-                                                  DisplayMemberPath="Label" VerticalAlignment="Center" />
+                                        <TextBlock Text="旋转" Width="120" VerticalAlignment="Center" />
+                                        <Button MinWidth="160" Padding="12,6" Click="Rotate_Click"
+                                                ToolTip="以进度条几何中心为原点顺时针旋转 90°（横放 ↔ 竖放）">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Content" Value="旋转 90°（当前横放）" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Orientation}" Value="Vertical">
+                                                            <Setter Property="Content" Value="旋转 90°（当前竖放）" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="镜像时间轴" Width="120" VerticalAlignment="Center" />
+                                        <TextBlock Text="水平翻转" Width="120" VerticalAlignment="Center" />
                                         <CheckBox IsChecked="{Binding Mirrored}" VerticalAlignment="Center" ToolTip="以进度条中心为对称轴翻转时间映射" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="长度" Width="120" VerticalAlignment="Center" />
-                                        <Slider Minimum="200" Maximum="2000" Width="200" Value="{Binding Length}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding Length, StringFormat={}{0:0}}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="宽度" Width="120" VerticalAlignment="Center" />
-                                        <Slider Minimum="2" Maximum="10" Width="200" Value="{Binding Width}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding Width, StringFormat={}{0:0}}" Width="50" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#5A5A5A" />
                                     </StackPanel>
                                     <Separator Margin="0,6,0,12" />
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <TextBlock Text="快速定位" Width="120" VerticalAlignment="Center" />
+                                        <TextBlock Text="进度条定位预设" Width="120" VerticalAlignment="Center" />
                                         <ComboBox Width="140" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
-                                                  DisplayMemberPath="Label" VerticalAlignment="Center" ToolTip="选择后立即定位并复位（一次性）" />
+                                                  DisplayMemberPath="Label" VerticalAlignment="Center" ToolTip="选择后立即把进度条定位到屏幕对应位置并复位（一次性）" />
                                         <TextBlock Text="显示器" Width="60" Margin="12,0,0,0" VerticalAlignment="Center" />
                                         <ComboBox Width="160" ItemsSource="{Binding Monitors}" SelectedItem="{Binding SelectedMonitor}"
                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <TextBlock Text="文字定位预设" Width="120" VerticalAlignment="Center" />
+                                        <ComboBox Width="140" ItemsSource="{Binding TextPositionPresets}" SelectedItem="{Binding SelectedTextPreset}"
+                                                  DisplayMemberPath="Label" VerticalAlignment="Center"
+                                                  ToolTip="选择后立即把备注文字定位到进度条对应一侧并复位（一次性；横放竖放均适用）" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <TextBlock Text="拖动更改位置" Width="120" VerticalAlignment="Center" />

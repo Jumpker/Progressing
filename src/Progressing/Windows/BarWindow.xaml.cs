@@ -88,30 +88,45 @@ public partial class BarWindow : Window
         var labelBand = LabelLayoutSolver.DefaultFontSize * 1.5 + LabelLayoutSolver.LabelGap;
         var pad = _editMode ? EditModePadding : 0;
 
-        // 四周预留空间：文字带（按锚点）+ 时间标注带（横放标注在上 / 竖放标注在左）；
+        // 指针以进度条为中心压在轨道上，垂直于轨道方向会凸出 (Size - Width) / 2；
+        // 四周必须预留该凸出量，否则指针超出窗口边缘的部分会被窗口裁剪
+        // （自定义指针内容铺满图标框，凸出部分被截断尤其明显）
+        var pointerProtrude = Math.Max(0.0, (c.Pointer.Size - c.Width) / 2.0);
+
+        // 文字带按锚点方向预留（与横竖放无关）：上方 → 顶部、下方 → 底部、左侧 → 左部、右侧 → 右部，
+        // 保证任意方向（无论横放还是竖放）文字都能落在窗口内而不被裁剪
+        var textTop = c.TextStyle.Anchor == TextAnchor.Top ? textBand + TextGap : 0;
+        var textBottom = c.TextStyle.Anchor == TextAnchor.Bottom ? textBand + TextGap : 0;
+        var textLeft = c.TextStyle.Anchor == TextAnchor.Left ? textBand + TextGap : 0;
+        var textRight = c.TextStyle.Anchor == TextAnchor.Right ? textBand + TextGap : 0;
+
+        // 时间标注带固定在外侧：横放在上 / 竖放在左
+        var labelTop = isHorizontal ? labelBand : 0;
+        var labelLeft = isHorizontal ? 0 : labelBand;
+
+        // 四周预留空间：文字带（按锚点）+ 时间标注带 + 指针凸出量；
         // 编辑模式再叠加四周留白，保证文字容器可拖到任意位置且不被窗口裁剪
-        var topSpace = (isHorizontal && c.TextStyle.Anchor == TextAnchor.Top ? textBand + TextGap : 0)
-                     + (isHorizontal ? labelBand : 0) + pad;
-        var bottomSpace = (isHorizontal && c.TextStyle.Anchor == TextAnchor.Bottom ? textBand + TextGap : 0) + pad;
-        var leftSpace = (!isHorizontal && c.TextStyle.Anchor == TextAnchor.Left ? textBand + TextGap : 0)
-                      + (!isHorizontal ? labelBand : 0) + pad;
-        var rightSpace = (!isHorizontal && c.TextStyle.Anchor == TextAnchor.Right ? textBand + TextGap : 0) + pad;
+        var topSpace = textTop + labelTop + pad + (isHorizontal ? pointerProtrude : 0);
+        var bottomSpace = textBottom + pad + (isHorizontal ? pointerProtrude : 0);
+        var leftSpace = textLeft + labelLeft + pad + (!isHorizontal ? pointerProtrude : 0);
+        var rightSpace = textRight + pad + (!isHorizontal ? pointerProtrude : 0);
 
         var length = Math.Clamp(c.Length, 200, 2000);
 
+        // 轨道始终放在四侧留白的中心区域（横放水平铺满长度 / 竖放垂直铺满长度）
         if (isHorizontal)
         {
-            Width = length;
+            Width = leftSpace + length + rightSpace;
             Height = topSpace + c.Width + bottomSpace;
-            Canvas.SetLeft(BarHost, 0);
+            Canvas.SetLeft(BarHost, leftSpace);
             Canvas.SetTop(BarHost, topSpace);
         }
         else
         {
             Width = leftSpace + c.Width + rightSpace;
-            Height = length;
+            Height = topSpace + length + bottomSpace;
             Canvas.SetLeft(BarHost, leftSpace);
-            Canvas.SetTop(BarHost, 0);
+            Canvas.SetTop(BarHost, topSpace);
         }
 
         SetupPointer(isHorizontal, topSpace, bottomSpace, leftSpace, rightSpace);
@@ -163,12 +178,16 @@ public partial class BarWindow : Window
         }
     }
 
-    /// <summary>应用一次性位置预设：解析为目标显示器上的坐标并固化（清空 Preset）。</summary>
+    /// <summary>
+    /// 应用一次性位置预设：把进度条本身定位到目标显示器工作区边缘（而非整个窗口边缘），
+    /// 并固化为最终坐标（清空 Preset）。
+    /// 窗口四周可能叠加了文字带 / 时间标注带 / 编辑模式留白，若按窗口尺寸贴边，
+    /// 进度条会随之内移（例如"底部居中"落在屏幕约 1/3 处）；
+    /// 因此这里以进度条在窗口内的偏移（BarOffset）反推窗口位置。
+    /// </summary>
     public void ApplyPreset(PlacementPreset preset, string? monitorId)
     {
         var monitor = FindMonitor(monitorId);
-        var x = Config.Placement.X;
-        var y = Config.Placement.Y;
 
         // 物理像素 → DIP
         var scale = monitor.DpiScale;
@@ -178,31 +197,74 @@ public partial class BarWindow : Window
         var waW = Win32WindowHelper.PxToDip(wa.Width, scale);
         var waH = Win32WindowHelper.PxToDip(wa.Height, scale);
 
+        // 进度条自身的尺寸（横放长宽 / 竖放宽长）
+        var isHorizontal = Config.Orientation == BarOrientation.Horizontal;
+        var barW = isHorizontal ? Config.Length : Config.Width;
+        var barH = isHorizontal ? Config.Width : Config.Length;
+
+        // 进度条左上角的目标屏幕坐标
+        double barX, barY;
         switch (preset)
         {
             case PlacementPreset.TopCenter:
-                x = waX + (waW - Width) / 2;
-                y = waY;
+                barX = waX + (waW - barW) / 2;
+                barY = waY;
                 break;
             case PlacementPreset.BottomCenter:
-                x = waX + (waW - Width) / 2;
-                y = waY + waH - Height;
+                barX = waX + (waW - barW) / 2;
+                barY = waY + waH - barH;
                 break;
             case PlacementPreset.LeftCenter:
-                x = waX;
-                y = waY + (waH - Height) / 2;
+                barX = waX;
+                barY = waY + (waH - barH) / 2;
                 break;
-            case PlacementPreset.RightCenter:
-                x = waX + waW - Width;
-                y = waY + (waH - Height) / 2;
+            default: // RightCenter
+                barX = waX + waW - barW;
+                barY = waY + (waH - barH) / 2;
                 break;
         }
+
+        // 窗口左上角 = 进度条目标位置 − 进度条在窗口内的偏移
+        var x = barX - BarOffsetX;
+        var y = barY - BarOffsetY;
 
         Config.Placement.X = x;
         Config.Placement.Y = y;
         Config.Placement.Preset = null;
         Left = x;
         Top = y;
+    }
+
+    /// <summary>
+    /// 以进度条几何中心为原点顺时针旋转 90°（横放 ↔ 竖放）：
+    /// 切换方向并平移窗口，使进度条中心保持在旋转前的屏幕位置不动；
+    /// 指针补间轴先于 ApplyConfig 切换，其内部的 JumpPointerToNow 才会落到新轴。
+    /// </summary>
+    public void RotateClockwise()
+    {
+        var c = Config;
+        var wasHorizontal = c.Orientation == BarOrientation.Horizontal;
+
+        // 旋转前进度条中心的屏幕坐标
+        var cx = Left + BarOffsetX + (wasHorizontal ? c.Length : c.Width) / 2;
+        var cy = Top + BarOffsetY + (wasHorizontal ? c.Width : c.Length) / 2;
+
+        c.Orientation = wasHorizontal ? BarOrientation.Vertical : BarOrientation.Horizontal;
+        _animator.SetAxis(!wasHorizontal);
+
+        ApplyConfig();
+
+        // 平移窗口补偿尺寸差，保证几何中心不动
+        var nowHorizontal = c.Orientation == BarOrientation.Horizontal;
+        var ncx = Left + BarOffsetX + (nowHorizontal ? c.Length : c.Width) / 2;
+        var ncy = Top + BarOffsetY + (nowHorizontal ? c.Width : c.Length) / 2;
+        Left += cx - ncx;
+        Top += cy - ncy;
+
+        // 旋转改变窗口几何，固化为最终位置
+        Config.Placement.X = Left;
+        Config.Placement.Y = Top;
+        Config.Placement.Preset = null;
     }
 
     private void SetupPointer(bool isHorizontal, double topSpace, double bottomSpace, double leftSpace, double rightSpace)
@@ -227,18 +289,17 @@ public partial class BarWindow : Window
             PointerRotate.Angle = 0; // 自定义图片始终保持原始方向
         }
 
-        // 指针与进度条重叠：跨轴居中压在进度条上
+        // 指针与进度条重叠：跨轴居中压在进度条上；沿轴方向基准对齐轨道起点，
+        // 平移偏移由补间驱动（轨道不在窗口原点时也要从轨道起点算起）
         if (isHorizontal)
         {
-            var barY = topSpace;
-            Canvas.SetLeft(PointerImage, 0); // X 由补间平移驱动
-            Canvas.SetTop(PointerImage, barY + (c.Width - size) / 2);
+            Canvas.SetLeft(PointerImage, leftSpace); // X 由补间平移驱动（0 = 进度条起点）
+            Canvas.SetTop(PointerImage, topSpace + (c.Width - size) / 2);
         }
         else
         {
-            var barX = leftSpace;
-            Canvas.SetLeft(PointerImage, barX + (c.Width - size) / 2);
-            Canvas.SetTop(PointerImage, 0); // Y 由补间平移驱动
+            Canvas.SetLeft(PointerImage, leftSpace + (c.Width - size) / 2);
+            Canvas.SetTop(PointerImage, topSpace); // Y 由补间平移驱动（0 = 进度条起点）
         }
 
         PointerImage.Visibility = Visibility.Visible;
@@ -250,9 +311,10 @@ public partial class BarWindow : Window
         NoteText.Foreground = FreezeBrush(c.TextStyle.Color);
         NoteText.FontSize = c.TextStyle.FontSize;
 
-        var borderEnabled = c.TextStyle.Border.Enabled;
-        NoteContainer.BorderBrush = borderEnabled ? FreezeBrush(c.TextStyle.Border.Color) : null;
-        NoteContainer.BorderThickness = borderEnabled ? new Thickness(c.TextStyle.Border.Width) : new Thickness(0);
+        // 文字边框 = 紧贴字形的描边（非矩形框）；关闭时描边宽度为 0
+        var border = c.TextStyle.Border;
+        NoteText.Stroke = border.Enabled ? FreezeBrush(border.Color) : Brushes.Transparent;
+        NoteText.StrokeThickness = border.Enabled ? border.Width : 0;
 
         // 排列方向：竖排 = 顺时针旋转 90°（自上而下阅读）
         NoteText.LayoutTransform = c.TextStyle.Arrangement == TextArrangement.Vertical

@@ -94,6 +94,10 @@ public partial class SettingsWindow : Window
         ResolveConflicts(vm, keep: vm.Notes[^1]);
     }
 
+    /// <summary>以进度条几何中心为原点顺时针旋转 90°（横放 ↔ 竖放）。</summary>
+    private void Rotate_Click(object sender, RoutedEventArgs e)
+        => CurrentInstance?.Rotate();
+
     private void NoteEditor_Loaded(object sender, RoutedEventArgs e)
     {
         var editor = (SegmentEditor)sender;
@@ -120,12 +124,14 @@ public partial class SettingsWindow : Window
         if (vm is null)
             return;
 
-        var conflicts = vm.ValidateNoteChange();
+        // 只列出与正在编辑的这条备注重叠的其它备注（排除它自身），
+        // 确认后删除冲突项、保留正在编辑的这条——否则编辑中这条也会被一并删除
+        var conflicts = OverlapValidator.FindConflicts(vm.Config.Notes, editor.Note);
         if (conflicts.Count > 0)
         {
             if (ConflictDialog.Ask(this, conflicts))
             {
-                foreach (var c in conflicts.ToList())
+                foreach (var c in conflicts)
                     vm.RemoveNote(c);
             }
             else
@@ -156,20 +162,23 @@ public partial class SettingsWindow : Window
         vm.MoveNote(editor.Note, delta);
     }
 
-    /// <summary>新增后的重叠校验：确认删除全部冲突备注，否则移除刚新增的备注。</summary>
+    /// <summary>新增后的重叠校验：确认则删除与新建备注重叠的已有备注（保留新建），否则移除刚新增的备注。</summary>
     private void ResolveConflicts(InstanceViewModel vm, SegmentNote keep)
     {
-        var conflicts = vm.ValidateNoteChange();
+        // 只找与新建备注重叠的已有备注（按 ID 排除自身），
+        // 绝不能把新建的列入冲突列表，否则确认后新建的也会被删除
+        var conflicts = OverlapValidator.FindConflicts(vm.Config.Notes, keep);
         if (conflicts.Count == 0)
             return;
 
         if (ConflictDialog.Ask(this, conflicts))
         {
-            foreach (var c in conflicts.ToList())
+            foreach (var c in conflicts)
                 vm.RemoveNote(c);
         }
-        else if (vm.Notes.Contains(keep))
+        else
         {
+            // 取消 = 放弃本次新增：删除刚新建的这条（已有备注保留）
             vm.RemoveNote(keep);
         }
     }

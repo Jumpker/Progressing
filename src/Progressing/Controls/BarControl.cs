@@ -92,7 +92,8 @@ public class BarControl : FrameworkElement
                 barRect.Y - EditHighlightThickness,
                 barRect.Width + EditHighlightThickness * 2,
                 barRect.Height + EditHighlightThickness * 2);
-            var radius = outer.Height / 2;
+            // 圆头半径取短边的一半，竖放时高亮轮廓才不会变成橄榄形
+            var radius = Math.Min(outer.Width, outer.Height) / 2;
             dc.DrawRoundedRectangle(null, highlightPen, outer, radius, radius);
         }
     }

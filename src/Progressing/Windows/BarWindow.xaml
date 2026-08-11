@@ -33,13 +33,10 @@
             <!-- 备注文字容器（所有备注共用同一显示位置） -->
             <Border x:Name="NoteContainer"
                     Visibility="Collapsed"
-                    Background="#00000000"
-                    Padding="4,2"
-                    CornerRadius="4">
+                    Background="#00000000">
                 <StackPanel>
-                    <TextBlock x:Name="NoteText"
-                               FontSize="26"
-                               TextAlignment="Center" />
+                    <controls:StrokedText x:Name="NoteText"
+                                          FontSize="26" />
                     <win:EditModeOverlay x:Name="TextDragHandle"
                                           Visibility="Collapsed"
                                           HorizontalAlignment="Right" />

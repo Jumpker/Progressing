@@ -36,6 +36,14 @@ public static class IconService
         builder.Close();
         using var path = builder.Detach();
 
+        // 将水滴包围盒居中到画布中心：保证图形中心 = 位图中心，
+        // 指针 Image 放大 / 缩小时图形始终以中心为基准缩放，不会左右漂移
+        // （与 RasterizeSvg 自定义指针的居中逻辑保持一致）。
+        var bounds = path.Bounds;
+        canvas.Translate(
+            (RasterSize - bounds.Width) / 2 - bounds.Left,
+            (RasterSize - bounds.Height) / 2 - bounds.Top);
+
         using var paint = new SKPaint
         {
             Style = SKPaintStyle.Fill,

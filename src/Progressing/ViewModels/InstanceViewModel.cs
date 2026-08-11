@@ -110,13 +110,22 @@ public partial class InstanceViewModel : TabViewModel
     /// <summary>显示器下拉项。</summary>
     public ObservableCollection<MonitorItem> Monitors { get; } = new();
 
-    /// <summary>快速定位预设下拉项（选中即应用并复位）。</summary>
+    /// <summary>进度条定位预设下拉项（选中即应用并复位）。</summary>
     public IReadOnlyList<PlacementPresetItem> Presets { get; } = new[]
     {
         new PlacementPresetItem("顶部居中", PlacementPreset.TopCenter),
         new PlacementPresetItem("底部居中", PlacementPreset.BottomCenter),
         new PlacementPresetItem("左侧居中", PlacementPreset.LeftCenter),
         new PlacementPresetItem("右侧居中", PlacementPreset.RightCenter),
+    };
+
+    /// <summary>文字定位预设下拉项（一次性：选中即设锚点、清零拖拽偏移并复位）。</summary>
+    public IReadOnlyList<LabeledValue<TextAnchor>> TextPositionPresets { get; } = new[]
+    {
+        new LabeledValue<TextAnchor>("进度条上方", TextAnchor.Top),
+        new LabeledValue<TextAnchor>("进度条下方", TextAnchor.Bottom),
+        new LabeledValue<TextAnchor>("进度条左侧", TextAnchor.Left),
+        new LabeledValue<TextAnchor>("进度条右侧", TextAnchor.Right),
     };
 
     /// <summary>选中的显示器（应用预设时临时生效；null = 主显示器）。</summary>
@@ -127,13 +136,11 @@ public partial class InstanceViewModel : TabViewModel
     [ObservableProperty]
     private PlacementPresetItem? _selectedPreset;
 
-    // ---------------- 下拉选项集合 ----------------
+    /// <summary>一次性文字定位预设（选中即设锚点、清零拖拽偏移并复位）。</summary>
+    [ObservableProperty]
+    private LabeledValue<TextAnchor>? _selectedTextPreset;
 
-    public IReadOnlyList<LabeledValue<BarOrientation>> OrientationOptions { get; } = new[]
-    {
-        new LabeledValue<BarOrientation>("横放", BarOrientation.Horizontal),
-        new LabeledValue<BarOrientation>("竖放", BarOrientation.Vertical),
-    };
+    // ---------------- 下拉选项集合 ----------------
 
     public IReadOnlyList<LabeledValue<PointerSource>> PointerSourceOptions { get; } = new[]
     {
@@ -176,7 +183,31 @@ public partial class InstanceViewModel : TabViewModel
         SelectedPreset = null; // 一次性：解析即复位
     }
 
+    /// <summary>
+    /// 一次性文字定位预设：设锚点并清零拖拽偏移，文字立即吸附到进度条对应一侧。
+    /// 锚点定位按横竖放各自布局（见 PositionNoteContainer），因此任意方向都成立。
+    /// </summary>
+    partial void OnSelectedTextPresetChanged(LabeledValue<TextAnchor>? value)
+    {
+        if (value is null)
+            return;
+
+        Config.TextStyle.Anchor = value.Value;
+        Config.TextOffset = new Point2D(); // 取消手动拖拽偏移，回到预设基准位置
+        OnPropertyChanged(nameof(TextAnchor)); // 与文字样式分区的"基准方向"联动
+        Save();
+        SelectedTextPreset = null; // 一次性：应用即复位
+    }
+
     public bool IsEditMode => Window.IsEditMode;
+
+    /// <summary>以进度条几何中心为原点顺时针旋转 90°（横放 ↔ 竖放），并刷新依赖方向的 UI。</summary>
+    public void Rotate()
+    {
+        Window.RotateClockwise();
+        OnPropertyChanged(nameof(Orientation));
+        Save();
+    }
 
     [RelayCommand]
     private void ToggleEditMode()
@@ -230,17 +261,23 @@ public partial class InstanceViewModel : TabViewModel
             Notes.Add(note);
     }
 
-    /// <summary>新增备注：自动取当日首个空闲时段（默认 1 小时）。</summary>
+    /// <summary>新增备注：随机取色（色池未用完前不重复，规则见产品设计书 §3.4）+ 默认时段 1 小时。</summary>
     public void AddNote()
     {
+        var poolIndex = new ColorPoolService(Config.ColorPoolUsed).PickRandomIndex();
         var note = new SegmentNote
         {
             Id = Guid.NewGuid().ToString("N"),
             Start = "00:00",
             End = "01:00",
             Text = "备注",
-            Color = new SegmentColor { Source = ColorSource.Custom },
-            CustomHex = "#4A90D9",
+            Color = new SegmentColor
+            {
+                Source = ColorSource.Pool,
+                PoolIndex = poolIndex,
+                AssignedBy = ColorAssignedBy.Random, // 随机取用，删除时归还色池配额
+            },
+            CustomHex = null,
         };
         Config.Notes.Add(note);
         Notes.Add(note);
@@ -268,10 +305,6 @@ public partial class InstanceViewModel : TabViewModel
         Notes.Move(i, j);
         Save();
     }
-
-    /// <summary>备注行变更后校验重叠；返回冲突列表（空 = 无冲突）。</summary>
-    public List<SegmentNote> ValidateNoteChange()
-        => OverlapValidator.FindConflicts(Config.Notes);
 
     /// <summary>删除 / 颜色改为自定义时，归还随机取用占用的色池配额。</summary>
     private void ReleaseColor(SegmentNote note)
@@ -375,7 +408,7 @@ public sealed record MonitorItem(string? DeviceName, string Label)
     public override string ToString() => Label;
 }
 
-/// <summary>快速定位预设下拉项。</summary>
+/// <summary>进度条定位预设下拉项。</summary>
 public sealed record PlacementPresetItem(string Label, PlacementPreset Value)
 {
     public override string ToString() => Label;

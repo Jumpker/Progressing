@@ -16,7 +16,8 @@ public static class BarRenderer
     /// <summary>绘制灰色轨道（胶囊形）。</summary>
     public static void DrawTrack(DrawingContext dc, Rect barRect)
     {
-        var radius = barRect.Height / 2;
+        // 圆头半径取短边的一半：横放 = 高/2，竖放 = 宽/2（否则竖放会画成两头尖的拉长橄榄形）
+        var radius = Math.Min(barRect.Width, barRect.Height) / 2;
         dc.DrawRoundedRectangle(TrackBrush, null, barRect, radius, radius);
     }
 
@@ -27,7 +28,8 @@ public static class BarRenderer
             return;
 
         var brush = Freeze(new SolidColorBrush(color));
-        var radius = segmentRect.Height / 2;
+        // 圆头半径取短边的一半，竖放段才不会画成橄榄形
+        var radius = Math.Min(segmentRect.Width, segmentRect.Height) / 2;
         dc.DrawRoundedRectangle(brush, borderPen, segmentRect, radius, radius);
     }
 
@@ -35,7 +37,8 @@ public static class BarRenderer
     public static void DrawBorder(DrawingContext dc, Rect barRect, Color color, double thickness)
     {
         var pen = FreezePen(new SolidColorBrush(color), thickness);
-        var radius = barRect.Height / 2;
+        // 圆头半径取短边的一半，竖放时与轨道一致
+        var radius = Math.Min(barRect.Width, barRect.Height) / 2;
         // 外缘描边：将矩形向外扩半线宽，使笔画居中于边缘
         var outer = new Rect(
             barRect.X - thickness / 2,
