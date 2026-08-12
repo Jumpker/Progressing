@@ -37,6 +37,21 @@ public partial class GlobalViewModel : TabViewModel
         }
     }
 
+    /// <summary>全屏隐藏：全屏视频 / 游戏时自动隐藏所有进度条（默认开启）。</summary>
+    public bool HideOnFullscreen
+    {
+        get => _configService.Config.HideOnFullscreen;
+        set
+        {
+            if (_configService.Config.HideOnFullscreen == value)
+                return;
+            _configService.Config.HideOnFullscreen = value;
+            _configService.MarkDirty();
+            FullscreenWatcher.ApplyNow(); // 开关切换立即生效（当前若在全屏则立即隐藏 / 恢复）
+            OnPropertyChanged();
+        }
+    }
+
     /// <summary>主题模式：跟随系统 / 浅色 / 深色（选择后即时换肤并持久化）。</summary>
     public AppTheme Theme
     {

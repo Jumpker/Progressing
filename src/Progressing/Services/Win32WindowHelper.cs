@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -14,8 +15,11 @@ public static class Win32WindowHelper
     private const int WS_EX_LAYERED = 0x00080000;
 
     private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOZORDER = 0x0004;
     private const uint SWP_NOACTIVATE = 0x0010;
+
+    private static readonly IntPtr HWND_TOPMOST = new(-1);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT
@@ -68,6 +72,15 @@ public static class Win32WindowHelper
     [DllImport("user32.dll")]
     private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
 
@@ -78,6 +91,9 @@ public static class Win32WindowHelper
 
     /// <summary>MONITORINFOF_PRIMARY：主显示器标记。</summary>
     private const int MONITORINFOF_PRIMARY = 1;
+
+    /// <summary>MonitorFromWindow：返回包含指定窗口的显示器。</summary>
+    private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
 
     /// <summary>一台显示器的信息（物理像素坐标，DIP 需按 DpiScale 换算）。</summary>
     public sealed record MonitorInfo(string DeviceName, Rect Bounds, Rect WorkArea, double DpiScale, bool IsPrimary);
@@ -161,8 +177,50 @@ public static class Win32WindowHelper
     public static void MoveTo(IntPtr hWnd, int x, int y)
         => SetWindowPos(hWnd, IntPtr.Zero, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
+    /// <summary>
+    /// 把窗口重新断言为置顶（HWND_TOPMOST，放到所有置顶窗口之上，含任务栏）。
+    /// 任务栏本身是置顶窗口，用户点击任务栏后任务栏会盖住进度条；前台切换时重新断言即可回到其上方。
+    /// </summary>
+    public static void AssertTopmost(IntPtr hWnd)
+        => SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+
     /// <summary>物理像素 → DIP（按该显示器缩放系数）。</summary>
     public static double PxToDip(double px, double dpiScale) => px / dpiScale;
+
+    /// <summary>
+    /// 判断窗口是否铺满其所在整块显示器（含任务栏区域）——即"全屏"。
+    /// 最大化窗口只覆盖工作区（任务栏仍在），因此不算全屏；桌面 / 任务栏等系统窗口被排除。
+    /// </summary>
+    public static bool IsFullscreenWindow(IntPtr hWnd)
+    {
+        if (hWnd == IntPtr.Zero || !IsWindowVisible(hWnd))
+            return false;
+
+        // 桌面背景 / 任务栏窗口会铺满整屏，但并非全屏应用，直接排除
+        var sb = new StringBuilder(64);
+        if (GetClassName(hWnd, sb, sb.Capacity) > 0)
+        {
+            var cls = sb.ToString();
+            if (cls is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd")
+                return false;
+        }
+
+        if (!GetWindowRect(hWnd, out var rect))
+            return false;
+        if (rect.Width <= 0 || rect.Height <= 0)
+            return false;
+
+        var monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+        if (monitor == IntPtr.Zero)
+            return false;
+        var info = new MONITORINFOEX { cbSize = Marshal.SizeOf<MONITORINFOEX>() };
+        if (!GetMonitorInfo(monitor, ref info))
+            return false;
+
+        // 窗口覆盖整块显示器（四个方向都不小于显示器边界）才算全屏
+        return rect.Left <= info.rcMonitor.Left && rect.Top <= info.rcMonitor.Top &&
+               rect.Right >= info.rcMonitor.Right && rect.Bottom >= info.rcMonitor.Bottom;
+    }
 
     private static double GetDpiScale(IntPtr hMonitor)
     {

@@ -13,6 +13,9 @@ public class AppConfig
     /// <summary>开机自启（启动文件夹快捷方式）。</summary>
     public bool AutoStart { get; set; }
 
+    /// <summary>全屏隐藏：全屏视频 / 游戏时自动隐藏所有进度条（默认开启）。</summary>
+    public bool HideOnFullscreen { get; set; } = true;
+
     /// <summary>颜色弹窗"最近使用颜色"（≤10 个，全局持久化）。</summary>
     public List<string> RecentColors { get; set; } = new();
 
@@ -25,6 +28,7 @@ public class AppConfig
         Version = Version,
         Theme = Theme,
         AutoStart = AutoStart,
+        HideOnFullscreen = HideOnFullscreen,
         RecentColors = new List<string>(RecentColors),
         Instances = Instances.Select(i => i.Clone()).ToList(),
     };

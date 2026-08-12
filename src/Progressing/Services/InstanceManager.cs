@@ -130,6 +130,20 @@ public class InstanceManager
         _config.MarkDirty();
     }
 
+    /// <summary>对所有"置顶 + 可见"的进度条重新断言置顶（前台切换到任务栏等场景后由 TopmostGuard 调用）。</summary>
+    public void AssertAllTopmost()
+    {
+        foreach (var window in _windows)
+            window.AssertTopmost();
+    }
+
+    /// <summary>全屏隐藏：对所有实例临时抑制显示（不改配置，全屏结束自动恢复）。</summary>
+    public void SetFullscreenHidden(bool hidden)
+    {
+        foreach (var window in _windows)
+            window.SetSuppressed(hidden);
+    }
+
     /// <summary>应用一次性位置预设。</summary>
     public void ApplyPreset(BarWindow window, PlacementPreset preset, string? monitorId)
     {

@@ -10,7 +10,7 @@
 
 点此链接下载压缩包：
 
-**https://github.com/Jumpker/Progressing/releases/download/v1.0.0/publish-win-x64.zip**
+**https://github.com/Jumpker/Progressing/releases/download/v1.0.1/Progressing-win-x64-v1.0.1.zip**
 
 ## 2. 运行
 

@@ -87,6 +87,14 @@ public partial class App : Application
         // 监听系统深浅色变化："跟随系统"模式下实时同步
         SystemEvents.UserPreferenceChanged += OnSystemThemeChanged;
 
+        // 置顶守卫：前台切换到任务栏等场景时，把所有"置顶 + 可见"的进度条重新断言为置顶，
+        // 避免任务栏（本身是置顶窗口）盖住进度条
+        TopmostGuard.Start(() => _manager?.AssertAllTopmost());
+
+        // 全屏监视器：全屏视频 / 游戏时自动隐藏进度条（开关见全局设置"全屏隐藏"，默认开启）
+        FullscreenWatcher.Start(fullscreen =>
+            _manager?.SetFullscreenHidden(fullscreen && _config!.Config.HideOnFullscreen));
+
         // 监听"再次启动"信号：收到后弹出设置窗口（单实例模式）
         StartWakeListener();
     }
@@ -200,6 +208,8 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= OnSystemThemeChanged;
+        TopmostGuard.Stop();
+        FullscreenWatcher.Stop();
         _config?.SaveNow();
         _tray?.Dispose();
         _wakeEvent?.Dispose(); // 释放唤醒句柄，监听线程随之退出

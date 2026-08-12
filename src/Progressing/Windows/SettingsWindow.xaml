@@ -104,6 +104,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Text="全局设置" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,18" />
@@ -114,10 +115,17 @@
                             <TextBlock Text="（启动文件夹快捷方式）" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextHintBrush}" FontSize="12" />
                         </StackPanel>
 
-                        <TextBlock Grid.Row="2" Text="主题模式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,18">
+                            <TextBlock Text="全屏隐藏" Width="120" VerticalAlignment="Center" />
+                            <CheckBox IsChecked="{Binding HideOnFullscreen}" VerticalAlignment="Center"
+                                      ToolTip="全屏播放视频 / 玩游戏时自动隐藏所有进度条，退出全屏后恢复" />
+                            <TextBlock Text="（全屏视频 / 游戏时自动隐藏）" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextHintBrush}" FontSize="12" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="3" Text="主题模式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
 
                         <!-- 主题模式预览卡片（浅色 / 深色 / 跟随系统） -->
-                        <ListBox Grid.Row="3" ItemsSource="{Binding ThemeOptions}"
+                        <ListBox Grid.Row="4" ItemsSource="{Binding ThemeOptions}"
                                  SelectedValue="{Binding Theme}" SelectedValuePath="Value"
                                  Background="Transparent" BorderThickness="0" Margin="0,0,0,22"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -262,7 +270,7 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <StackPanel Grid.Row="4" Orientation="Horizontal">
+                        <StackPanel Grid.Row="5" Orientation="Horizontal">
                             <TextBlock Text="版本" Width="120" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding Version}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </StackPanel>

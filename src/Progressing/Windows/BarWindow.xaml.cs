@@ -31,6 +31,7 @@ public partial class BarWindow : Window
     private readonly BarControl _bar;
 
     private bool _editMode;
+    private bool _suppressed;
     private bool _isDraggingText;
     private Point _dragStartScreen;
     private double _textOffsetStartX;
@@ -147,8 +148,8 @@ public partial class BarWindow : Window
         _bar.Bind(c);
         _bar.SetEditMode(_editMode);
 
-        // 可见性 → 隐藏即停
-        if (c.Visible)
+        // 可见性 → 隐藏即停（全屏隐藏等临时抑制时同样保持隐藏）
+        if (c.Visible && !_suppressed)
         {
             Show();
             _timer.Start();
@@ -161,6 +162,32 @@ public partial class BarWindow : Window
 
         // 配置变更后指针跳到当前时刻（不播动画，避免跳变感）
         JumpPointerToNow();
+    }
+
+    /// <summary>
+    /// 临时抑制显示（全屏隐藏等）：只隐藏窗口、不改配置里的"显示进度条"，
+    /// 恢复时回到原可见状态并立即校正指针位置。全屏隐藏不进入位置编辑状态。
+    /// </summary>
+    public void SetSuppressed(bool suppressed)
+    {
+        if (_suppressed == suppressed)
+            return;
+
+        _suppressed = suppressed;
+        if (!Config.Visible)
+            return;
+
+        if (suppressed)
+        {
+            _timer.Stop();
+            Hide();
+        }
+        else
+        {
+            Show();
+            _timer.Start();
+            JumpPointerToNow();
+        }
     }
 
     /// <summary>
@@ -679,6 +706,7 @@ public partial class BarWindow : Window
             Config.Placement.X = Left;
             Config.Placement.Y = Top;
             Config.Placement.Preset = null;
+            AssertTopmost(); // 拖完立即回到任务栏之上（拖拽期间可能被任务栏盖住）
         }
 
         if (_isDraggingText)
@@ -760,6 +788,18 @@ public partial class BarWindow : Window
         return Win32WindowHelper.MonitorAt(
             Left + BarOffsetX + barW / 2,
             Top + BarOffsetY + barH / 2);
+    }
+
+    /// <summary>
+    /// 重新断言置顶（HWND_TOPMOST，置于所有置顶窗口之上，含任务栏）。
+    /// 任务栏本身是置顶窗口，点击后会把进度条盖住；前台切换 / 拖拽结束时由守卫调用此方法恢复。
+    /// </summary>
+    public void AssertTopmost()
+    {
+        if (!Config.Topmost || !Config.Visible)
+            return;
+
+        Win32WindowHelper.AssertTopmost(new WindowInteropHelper(this).Handle);
     }
 
     private static Win32WindowHelper.MonitorInfo FindMonitor(string? deviceName)
