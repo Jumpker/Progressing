@@ -28,6 +28,21 @@ jobs:
         shell: pwsh
         run: dotnet publish src/Progressing/Progressing.csproj -c Release -r win-x64 --self-contained true -v minimal
 
+      # 兜底清理调试符号（*.pdb 含约 100MB 的原生符号，如 coreclr.pdb）+ 打印发布目录大小，
+      # 即使 TrimPublishOutput 目标在 CI 环境未生效，也能保证产物瘦身且在日志中可见
+      - name: 清理符号并打印发布目录大小
+        shell: pwsh
+        run: |
+          $dir = 'src/Progressing/bin/Release/net10.0-windows/win-x64/publish'
+          Get-ChildItem $dir -Recurse -File -Filter *.pdb | Remove-Item -Force
+          $sum = (Get-ChildItem $dir -Recurse -File | Measure-Object Length -Sum).Sum
+          Write-Host "publish 目录大小: $([math]::Round($sum/1MB,1)) MB"
+          Get-ChildItem $dir -Recurse -File | Group-Object Extension |
+            Sort-Object { ($_.Group | Measure-Object Length -Sum).Sum } -Descending |
+            Select-Object -First 5 | ForEach-Object {
+              Write-Host "  $($_.Name): $([math]::Round((($_.Group | Measure-Object Length -Sum).Sum)/1MB,1)) MB"
+            }
+
       # 未配置签名 token 时照常发布未签名版（SignPath 审核通过前也能用）
       - name: 检查是否配置了 SignPath 签名
         id: signpath

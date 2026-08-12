@@ -9,7 +9,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\Tray\Progressing.ico</ApplicationIcon>
     <!-- 发布版本号：设置窗口"版本"与 exe 文件属性（右键 → 属性 → 详细信息）保持一致 -->
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <!-- 只保留中文 + 英文系统资源包，去掉其余 12 种语言（约 -15MB） -->
     <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
   </PropertyGroup>
@@ -26,6 +26,9 @@
 
   <!-- 发布时把卸载程序（自包含单文件 uninstall.exe）一并输出到 publish 目录 -->
   <Target Name="PublishUninstaller" AfterTargets="Publish">
+    <!-- 先清掉卸载器旧发布产物：增量构建时 Uninstaller 的 Publish 可能被判"最新"而跳过，
+         导致把未裁剪的旧 uninstall.exe（约 70MB）拷进发布包，体积暴增 -->
+    <RemoveDir Directories="$(MSBuildThisFileDirectory)..\Uninstaller\bin\$(Configuration)\net10.0-windows\win-x64\publish" />
     <MSBuild Projects="$(MSBuildThisFileDirectory)..\Uninstaller\Uninstaller.csproj"
              Targets="Restore;Publish"
              Properties="Configuration=$(Configuration);RuntimeIdentifier=win-x64;SelfContained=true;PublishSingleFile=true;PublishTrimmed=true" />
